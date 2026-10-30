@@ -1,0 +1,1216 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Blocolândia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Full-window 3D view with a thin HUD on top; menus are centered panels over a dimmed scene. */
+:root{
+  --ink:#f4f1ea; --muted:#b9c2c9; --panel:rgba(20,24,30,.92); --line:#3a4350; --slot:#2a313b; --slot-hi:#3b4553;
+  --accent:#7bd36b; --warn:#ff6b5a; --gold:#f2c14e;
+  --display:"Bungee","Arial Black",Impact,system-ui,sans-serif;
+  --body:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#0b1020;color:var(--ink);font-family:var(--body);font-size:17px;user-select:none}
+canvas#view{display:block;width:100vw;height:100vh}
+#water{position:fixed;inset:0;background:rgba(30,70,170,.42);pointer-events:none}
+#hurt{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 50%,rgba(220,30,20,.55));pointer-events:none;opacity:0;transition:opacity .25s}
+#cross{position:fixed;left:50%;top:50%;width:20px;height:20px;transform:translate(-50%,-50%);pointer-events:none;mix-blend-mode:difference}
+#cross:before,#cross:after{content:"";position:absolute;background:#fff}
+#cross:before{left:9px;top:0;width:2px;height:20px}#cross:after{top:9px;left:0;height:2px;width:20px}
+#mine{position:fixed;left:50%;top:calc(50% + 18px);transform:translateX(-50%);width:60px;height:5px;background:rgba(0,0,0,.5);border-radius:3px;overflow:hidden;pointer-events:none}
+#mine i{display:block;height:100%;background:#fff;width:0}
+#info{position:fixed;left:10px;top:8px;font-size:15px;color:var(--ink);text-shadow:0 1px 2px #000;pointer-events:none;line-height:1.3}
+#toast{position:fixed;left:50%;bottom:116px;transform:translateX(-50%);font-weight:700;font-size:19px;text-shadow:0 1px 3px #000;pointer-events:none;transition:opacity .3s;white-space:nowrap}
+#bars{position:fixed;left:50%;bottom:66px;transform:translateX(-50%);width:min(468px,calc(100vw - 32px));display:flex;justify-content:space-between;pointer-events:none;gap:8px}
+.row{display:flex;gap:1px}
+.ico{width:18px;height:18px}
+#air{position:fixed;left:50%;bottom:88px;transform:translateX(-50%);width:min(468px,calc(100vw - 32px));display:flex;justify-content:flex-end;gap:1px;pointer-events:none}
+#hotbar{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:2px;background:rgba(0,0,0,.45);padding:3px;border-radius:6px}
+.slot{width:50px;height:50px;background:var(--slot);border:2px solid #1a1f26;border-radius:4px;position:relative;display:grid;place-items:center}
+.slot img{width:32px;height:32px;image-rendering:pixelated;pointer-events:none}
+.slot .n{position:absolute;right:3px;bottom:0;font-weight:700;font-size:16px;text-shadow:1px 1px 0 #000;pointer-events:none}
+.slot .dur{position:absolute;left:5px;right:5px;bottom:4px;height:3px;background:#000;pointer-events:none}
+.slot .dur i{display:block;height:100%}
+#hotbar .slot.sel{border-color:#fff;background:var(--slot-hi)}
+@media (max-width:540px){.slot{width:36px;height:36px}.slot img{width:24px;height:24px}}
+.ov{position:fixed;inset:0;display:grid;place-items:center;background:rgba(5,8,14,.6);padding:16px;overflow:auto}
+.ov[hidden]{display:none}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px;max-width:100%}
+.menu{width:min(520px,100%);text-align:center;align-items:center}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(34px,7vw,58px);margin:0;line-height:1;background:linear-gradient(180deg,#a5e86a,#3f9d3a);-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font-family:var(--display);font-weight:400;font-size:24px;margin:0}
+h3{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:600}
+.lead{margin:0;color:var(--muted);font-size:18px;max-width:44ch}
+.btn{font-family:var(--display);font-size:14px;letter-spacing:.03em;border-radius:6px;padding:10px 16px;cursor:pointer;border:1px solid var(--line);background:#252c36;color:var(--ink);text-decoration:none;display:inline-block}
+.btn:hover{filter:brightness(1.2)}
+.btn.primary{background:var(--accent);color:#11250d;border-color:transparent}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.btns{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+input[type=text]{font:inherit;background:#11161d;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:220px}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;text-align:left;font-size:15px;color:var(--muted)}
+kbd{font-family:var(--body);font-weight:700;font-size:14px;padding:1px 6px;border-radius:4px;background:#2a313b;border:1px solid #444f5d;border-bottom-width:3px;color:var(--ink);white-space:nowrap}
+.grid{display:grid;gap:2px}
+.g9{grid-template-columns:repeat(9,auto)}
+.g3{grid-template-columns:repeat(3,auto)}
+.g2{grid-template-columns:repeat(2,auto)}
+.inv .slot{cursor:pointer}
+.inv .slot:hover{background:var(--slot-hi)}
+.craft{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.arrow{font-family:var(--display);font-size:24px;color:var(--muted)}
+.furn{display:grid;grid-template-columns:auto auto auto;grid-template-rows:auto auto;gap:6px 14px;align-items:center}
+.prog{width:44px;height:8px;background:#11161d;border-radius:4px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--gold);width:0}
+.flame{width:14px;height:24px;background:#11161d;border-radius:3px;position:relative;overflow:hidden;justify-self:center}
+.flame i{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(0deg,#ff5a1f,#ffd34a);height:0}
+#cursor{position:fixed;pointer-events:none;z-index:50;transform:translate(-50%,-50%)}
+#cursor.slot{background:transparent;border-color:transparent}
+.palette{max-height:240px;overflow:auto;padding-right:4px}
+.tip{font-size:15px;color:var(--muted)}
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="water" hidden></div>
+<div id="hurt"></div>
+<div id="hud" hidden>
+  <div id="cross"></div>
+  <div id="mine" hidden><i></i></div>
+  <div id="info"></div>
+  <div id="toast"></div>
+  <div id="air"></div>
+  <div id="bars"><div class="row" id="hearts"></div><div class="row" id="food"></div></div>
+  <div id="hotbar"></div>
+</div>
+
+<div class="ov" id="menu">
+  <div class="card menu">
+    <h1>Blocolândia</h1>
+    <p class="lead">Um mundo infinito feito de blocos. Cave, colete, construa, fabrique ferramentas e sobreviva às sombras da noite.</p>
+    <div class="btns" id="contRow" hidden><button class="btn primary" id="btnCont" type="button">Continuar mundo salvo</button></div>
+    <h3>Novo mundo</h3>
+    <label class="tip">Semente (opcional) <input type="text" id="seed" placeholder="aleatória"></label>
+    <div class="btns">
+      <button class="btn primary" id="btnSurv" type="button">Sobrevivência</button>
+      <button class="btn" id="btnCrea" type="button">Criativo</button>
+    </div>
+    <div class="keys">
+      <kbd>W A S D</kbd><span>andar · <kbd>Ctrl</kbd> correr · <kbd>Shift</kbd> agachar</span>
+      <kbd>Espaço</kbd><span>pular / nadar · no criativo, <kbd>F</kbd> liga o voo</span>
+      <kbd>Clique esq.</kbd><span>quebrar bloco / atacar (segure)</span>
+      <kbd>Clique dir.</kbd><span>colocar bloco · usar mesa, fornalha e baú · comer</span>
+      <kbd>E</kbd><span>inventário e fabricação · <kbd>1</kbd>–<kbd>9</kbd> ou rodinha escolhem o item</span>
+    </div>
+    <a class="btn" href="index.html">Voltar ao launcher</a>
+  </div>
+</div>
+
+<div class="ov" id="pause" hidden>
+  <div class="card menu">
+    <h2>Pausado</h2>
+    <div class="btns">
+      <button class="btn primary" id="btnResume" type="button">Voltar ao jogo</button>
+      <button class="btn" id="btnSaveQuit" type="button">Salvar e sair</button>
+      <a class="btn" href="index.html" id="lnkLaunch">Launcher</a>
+    </div>
+    <p class="tip">O mundo é salvo automaticamente neste navegador.</p>
+  </div>
+</div>
+
+<div class="ov" id="dead" hidden>
+  <div class="card menu">
+    <h2 style="color:var(--warn)">Você morreu!</h2>
+    <p class="lead" id="deadMsg"></p>
+    <button class="btn primary" id="btnRespawn" type="button">Renascer</button>
+  </div>
+</div>
+
+<div class="ov" id="ui" hidden>
+  <div class="card inv" id="uiCard"></div>
+</div>
+<div id="cursor" class="slot" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const CS = 16, CH = 64, SEA = 27, RD = 4;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+// ---------- random & noise ----------
+function mulberry(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function hashStr(s) { let h = 2166136261; for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return h >>> 0; }
+let SEED = 1;
+function hash3(x, y, z, s = 0) {
+  let h = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(z, 2147483647) + Math.imul(SEED + s, 1442695041);
+  h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+let P = new Uint8Array(512);
+function seedNoise(seed) { const r = mulberry(seed), a = [...Array(256).keys()]; for (let i = 255; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } for (let i = 0; i < 512; i++) P[i] = a[i & 255]; }
+const fade = t => t * t * t * (t * (t * 6 - 15) + 10), lerp = (a, b, t) => a + t * (b - a);
+function grad(h, x, y, z) { const u = h < 8 ? x : y, v = h < 4 ? y : (h === 12 || h === 14 ? x : z); return ((h & 1) ? -u : u) + ((h & 2) ? -v : v); }
+function noise(x, y, z) {
+  const fx = Math.floor(x), fy = Math.floor(y), fz = Math.floor(z), X = fx & 255, Y = fy & 255, Z = fz & 255;
+  x -= fx; y -= fy; z -= fz; const u = fade(x), v = fade(y), w = fade(z);
+  const A = P[X] + Y, AA = P[A] + Z, AB = P[A + 1] + Z, B = P[X + 1] + Y, BA = P[B] + Z, BB = P[B + 1] + Z;
+  return lerp(lerp(lerp(grad(P[AA] & 15, x, y, z), grad(P[BA] & 15, x - 1, y, z), u), lerp(grad(P[AB] & 15, x, y - 1, z), grad(P[BB] & 15, x - 1, y - 1, z), u), v),
+    lerp(lerp(grad(P[AA + 1] & 15, x, y, z - 1), grad(P[BA + 1] & 15, x - 1, y, z - 1), u), lerp(grad(P[AB + 1] & 15, x, y - 1, z - 1), grad(P[BB + 1] & 15, x - 1, y - 1, z - 1), u), v), w);
+}
+const fbm = (x, z, o = 4) => { let s = 0, a = 1, f = 1, n = 0; for (let i = 0; i < o; i++) { s += noise(x * f, z * f, i * 17.3) * a; n += a; a *= .5; f *= 2; } return s / n; };
+
+// ---------- texture atlas ----------
+const AC = 8, AR = 4, TS = 16;
+const atlas = document.createElement('canvas'); atlas.width = AC * TS; atlas.height = AR * TS;
+const ag = atlas.getContext('2d');
+const TI = {}; let tcount = 0;
+const TR = mulberry(77);
+const rgb = (c, f = 1, a = 1) => `rgba(${clamp(c[0] * f | 0, 0, 255)},${clamp(c[1] * f | 0, 0, 255)},${clamp(c[2] * f | 0, 0, 255)},${a})`;
+function tile(name, fn) {
+  const i = tcount++, ox = (i % AC) * TS, oy = Math.floor(i / AC) * TS; TI[name] = i;
+  const px = (x, y, c) => { ag.fillStyle = c; ag.fillRect(ox + x, oy + y, 1, 1); };
+  const speck = (c, v) => { for (let y = 0; y < TS; y++) for (let x = 0; x < TS; x++) px(x, y, rgb(c, 1 + (TR() - .5) * v)); };
+  fn(px, speck);
+}
+const DIRT = [134, 96, 58], GRASS = [95, 165, 58], STONE = [128, 128, 128], PLANK = [184, 137, 79];
+const cobble = (px, speck, f = 1) => { speck(STONE.map(v => v * .92 * f), .25); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const band = Math.floor(y / 5), off = band % 2 ? 3 : 0; if (y % 5 === 4 || (x + off) % 6 === 5) px(x, y, rgb(STONE, .55 * f)); } };
+const planks = (px, speck, c = PLANK) => { speck(c, .12); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const band = Math.floor(y / 4); if (y % 4 === 3 || (x === (band % 2 ? 4 : 11) && y % 4 !== 3)) px(x, y, rgb(c, .62)); } };
+const ore = (px, speck, c) => { speck(STONE, .25); for (let k = 0; k < 6; k++) { const x = 1 + TR() * 12 | 0, y = 1 + TR() * 12 | 0; px(x, y, rgb(c)); px(x + 1, y, rgb(c, .8)); px(x, y + 1, rgb(c, .9)); if (TR() < .6) px(x + 1, y + 1, rgb(c, 1.15)); } };
+tile('grass_top', (px, s) => s(GRASS, .3));
+tile('grass_side', (px, s) => { s(DIRT, .35); for (let x = 0; x < 16; x++) { const h = 3 + (TR() * 3 | 0); for (let y = 0; y < h; y++) px(x, y, rgb(GRASS, .9 + TR() * .25)); } });
+tile('dirt', (px, s) => s(DIRT, .35));
+tile('stone', (px, s) => { s(STONE, .22); for (let k = 0; k < 8; k++) px(TR() * 16 | 0, TR() * 16 | 0, rgb(STONE, .7)); });
+tile('cobble', (px, s) => cobble(px, s));
+tile('sand', (px, s) => s([222, 208, 150], .14));
+tile('log_side', (px) => { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(x, y, rgb([107, 78, 42], .8 + (x % 4 === 0 ? -.2 : 0) + TR() * .18)); });
+tile('log_top', (px) => { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const d = Math.hypot(x - 7.5, y - 7.5); px(x, y, d > 7 ? rgb([107, 78, 42], .8) : rgb([176, 138, 86], .86 + .14 * Math.sin(d * 1.9))); } });
+tile('leaves', (px) => { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (TR() > .17) px(x, y, rgb([58, 128, 40], .65 + TR() * .5)); });
+tile('planks', (px, s) => planks(px, s));
+tile('water', (px, s) => { s([48, 98, 205], .12); for (let k = 0; k < 10; k++) { const x = TR() * 14 | 0, y = TR() * 16 | 0; px(x, y, rgb([120, 170, 240])); px(x + 1, y, rgb([120, 170, 240])); } });
+tile('bedrock', (px, s) => s([72, 72, 72], .9));
+tile('coal_ore', (px, s) => ore(px, s, [30, 30, 30]));
+tile('iron_ore', (px, s) => ore(px, s, [216, 160, 122]));
+tile('gold_ore', (px, s) => ore(px, s, [245, 212, 66]));
+tile('crystal_ore', (px, s) => ore(px, s, [95, 227, 232]));
+tile('glass', (px) => { for (let i = 0; i < 16; i++) { px(i, 0, rgb([220, 240, 255])); px(i, 15, rgb([220, 240, 255])); px(0, i, rgb([220, 240, 255])); px(15, i, rgb([220, 240, 255])); } for (let i = 3; i < 7; i++) px(i, 9 - i, rgb([235, 248, 255], 1, .7)); });
+tile('table_top', (px, s) => { planks(px, s, [170, 120, 66]); for (let i = 0; i < 16; i++) { px(i, 0, rgb([90, 60, 30])); px(i, 15, rgb([90, 60, 30])); px(0, i, rgb([90, 60, 30])); px(15, i, rgb([90, 60, 30])); px(i, 7, rgb([120, 80, 40])); px(7, i, rgb([120, 80, 40])); } });
+tile('table_side', (px, s) => { planks(px, s); for (let x = 0; x < 16; x++) for (let y = 0; y < 3; y++) px(x, y, rgb([110, 75, 40])); for (let y = 5; y < 13; y++) { px(4, y, rgb([90, 60, 30])); } for (let x = 2; x < 7; x++) px(x, 5, rgb([150, 150, 150])); for (let y = 5; y < 13; y++) px(11, y, rgb([90, 60, 30])); for (let x = 9; x < 14; x++) px(x, 6, rgb([150, 150, 150])); });
+tile('furnace_front', (px, s) => { cobble(px, s); for (let y = 8; y < 14; y++) for (let x = 4; x < 12; x++) px(x, y, y > 11 ? rgb([255, 140, 40], .8 + TR() * .4) : rgb([25, 25, 25])); for (let x = 3; x < 13; x++) px(x, 3, rgb([60, 60, 60])); });
+tile('furnace_side', (px, s) => cobble(px, s, 1.1));
+tile('torch', (px) => { for (let y = 6; y < 16; y++) { px(7, y, rgb([120, 85, 45])); px(8, y, rgb([95, 66, 34])); } for (let y = 3; y < 6; y++) { px(7, y, rgb(y === 3 ? [255, 240, 150] : [255, 170, 40])); px(8, y, rgb(y === 3 ? [255, 220, 110] : [240, 120, 30])); } });
+tile('snow', (px, s) => s([240, 245, 250], .06));
+tile('snow_side', (px, s) => { s(DIRT, .35); for (let x = 0; x < 16; x++) { const h = 3 + (TR() * 3 | 0); for (let y = 0; y < h; y++) px(x, y, rgb([240, 245, 250], .95 + TR() * .05)); } });
+tile('stonebrick', (px, s) => { s([125, 125, 125], .14); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (y % 8 === 7 || (x === (y < 8 ? 0 : 8))) px(x, y, rgb([70, 70, 70])); });
+tile('cactus_side', (px, s) => { s([70, 140, 60], .15); for (let y = 0; y < 16; y++) { px(2, y, rgb([40, 95, 35])); px(7, y, rgb([40, 95, 35])); px(12, y, rgb([40, 95, 35])); if (y % 4 === 1) { px(4, y, rgb([230, 230, 180])); px(10, y + 2 & 15, rgb([230, 230, 180])); } } });
+tile('cactus_top', (px, s) => { s([90, 160, 75], .12); for (let i = 0; i < 16; i++) { px(i, 0, rgb([40, 95, 35])); px(i, 15, rgb([40, 95, 35])); px(0, i, rgb([40, 95, 35])); px(15, i, rgb([40, 95, 35])); } });
+tile('chest_front', (px, s) => { planks(px, s, [160, 108, 52]); for (let i = 0; i < 16; i++) { px(i, 0, rgb([80, 50, 22])); px(i, 15, rgb([80, 50, 22])); px(0, i, rgb([80, 50, 22])); px(15, i, rgb([80, 50, 22])); px(i, 6, rgb([80, 50, 22])); } for (let y = 5; y < 10; y++) for (let x = 7; x < 9; x++) px(x, y, rgb([200, 200, 210])); });
+tile('chest_side', (px, s) => { planks(px, s, [160, 108, 52]); for (let i = 0; i < 16; i++) { px(i, 0, rgb([80, 50, 22])); px(i, 15, rgb([80, 50, 22])); px(0, i, rgb([80, 50, 22])); px(15, i, rgb([80, 50, 22])); px(i, 6, rgb([80, 50, 22])); } });
+
+// ---------- blocks & items ----------
+const AIR = 0, GRASSB = 1, DIRTB = 2, STONEB = 3, COBBLE = 4, SAND = 5, LOG = 6, LEAVES = 7, PLANKS = 8, WATER = 9, BEDROCK = 10,
+  COAL_ORE = 11, IRON_ORE = 12, GOLD_ORE = 13, CRYSTAL_ORE = 14, GLASS = 15, TABLE = 16, FURNACE = 17, TORCH = 18, SNOWY = 19, BRICKS = 20, CACTUS = 21, CHEST = 22;
+const BL = [];
+function block(id, name, tex, o = {}) {
+  const t = typeof tex === 'string' ? { top: tex, side: tex, bottom: tex } : tex;
+  BL[id] = { id, name, solid: true, opaque: true, cutout: false, hard: 1, tool: null, tier: 0, drop: id, tex: t, front: t.front, ...o };
+}
+block(AIR, 'Ar', 'stone', { solid: false, opaque: false });
+block(GRASSB, 'Grama', { top: 'grass_top', side: 'grass_side', bottom: 'dirt' }, { hard: .6, tool: 'shovel', drop: DIRTB });
+block(DIRTB, 'Terra', 'dirt', { hard: .5, tool: 'shovel' });
+block(STONEB, 'Pedra', 'stone', { hard: 1.5, tool: 'pick', tier: 1, drop: COBBLE });
+block(COBBLE, 'Pedregulho', 'cobble', { hard: 2, tool: 'pick', tier: 1 });
+block(SAND, 'Areia', 'sand', { hard: .5, tool: 'shovel' });
+block(LOG, 'Tronco', { top: 'log_top', side: 'log_side', bottom: 'log_top' }, { hard: 2, tool: 'axe' });
+block(LEAVES, 'Folhas', 'leaves', { hard: .2, opaque: false, cutout: true, drop: 0 });
+block(PLANKS, 'Tábuas', 'planks', { hard: 2, tool: 'axe' });
+block(WATER, 'Água', 'water', { solid: false, opaque: false, liquid: true, hard: Infinity });
+block(BEDROCK, 'Rocha-mãe', 'bedrock', { hard: Infinity });
+block(COAL_ORE, 'Minério de carvão', 'coal_ore', { hard: 3, tool: 'pick', tier: 1, drop: 101 });
+block(IRON_ORE, 'Minério de ferro', 'iron_ore', { hard: 3, tool: 'pick', tier: 2 });
+block(GOLD_ORE, 'Minério de ouro', 'gold_ore', { hard: 3, tool: 'pick', tier: 3 });
+block(CRYSTAL_ORE, 'Minério de cristal', 'crystal_ore', { hard: 3, tool: 'pick', tier: 3, drop: 104 });
+block(GLASS, 'Vidro', 'glass', { hard: .3, opaque: false, cutout: true, drop: 0 });
+block(TABLE, 'Mesa de trabalho', { top: 'table_top', side: 'table_side', bottom: 'planks' }, { hard: 2.5, tool: 'axe', use: 'table' });
+block(FURNACE, 'Fornalha', { top: 'furnace_side', side: 'furnace_side', bottom: 'furnace_side', front: 'furnace_front' }, { hard: 3.5, tool: 'pick', tier: 1, use: 'furnace' });
+block(TORCH, 'Tocha', 'torch', { hard: 0, solid: false, opaque: false, shape: 'torch' });
+block(SNOWY, 'Terra nevada', { top: 'snow', side: 'snow_side', bottom: 'dirt' }, { hard: .6, tool: 'shovel', drop: DIRTB });
+block(BRICKS, 'Tijolos de pedra', 'stonebrick', { hard: 1.5, tool: 'pick', tier: 1 });
+block(CACTUS, 'Cacto', { top: 'cactus_top', side: 'cactus_side', bottom: 'cactus_top' }, { hard: .4 });
+block(CHEST, 'Baú', { top: 'chest_side', side: 'chest_side', bottom: 'chest_side', front: 'chest_front' }, { hard: 2.5, tool: 'axe', use: 'chest' });
+
+const IT = {};
+for (const b of BL) if (b && b.id && b.id !== WATER) IT[b.id] = { name: b.name, stack: 64, block: true };
+const TIERS = ['madeira', 'pedra', 'ferro', 'cristal'], TCOL = [[156, 122, 72], [138, 138, 138], [230, 230, 230], [95, 227, 232]];
+Object.assign(IT, {
+  100: { name: 'Graveto', stack: 64 }, 101: { name: 'Carvão', stack: 64 }, 102: { name: 'Lingote de ferro', stack: 64 },
+  103: { name: 'Lingote de ouro', stack: 64 }, 104: { name: 'Cristal', stack: 64 },
+  150: { name: 'Carne crua', stack: 64, food: 3 }, 151: { name: 'Carne assada', stack: 64, food: 8 }, 152: { name: 'Maçã', stack: 64, food: 4 },
+});
+const TOOLS = { pick: ['Picareta', 110], axe: ['Machado', 120], shovel: ['Pá', 130], sword: ['Espada', 140] };
+for (const [type, [nm, base]] of Object.entries(TOOLS)) for (let t = 0; t < 4; t++)
+  IT[base + t] = { name: `${nm} de ${TIERS[t]}`, stack: 1, tool: type, tier: t + 1, speed: [2, 4, 6, 9][t], dur: [60, 132, 250, 1500][t], dmg: type === 'sword' ? 4 + t * 1.5 : 2 + t * .5 };
+
+// Item icons (32px data URLs).
+const ICON = {};
+function makeIcons() {
+  const c = document.createElement('canvas'); c.width = c.height = 16; const g = c.getContext('2d');
+  const px = (x, y, col) => { g.fillStyle = col; g.fillRect(x, y, 1, 1); };
+  const line = (x0, y0, x1, y1, col, w = 1) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let i = 0; i <= n; i++) { const x = Math.round(x0 + (x1 - x0) * i / n), y = Math.round(y0 + (y1 - y0) * i / n); for (let k = 0; k < w; k++) px(x + k, y, col); } };
+  const draw = (id, fn) => { g.clearRect(0, 0, 16, 16); fn(); const big = document.createElement('canvas'); big.width = big.height = 32; const bg = big.getContext('2d'); bg.imageSmoothingEnabled = false; bg.drawImage(c, 0, 0, 32, 32); ICON[id] = big.toDataURL(); };
+  const fromTile = name => { const i = TI[name]; g.drawImage(atlas, (i % AC) * TS, Math.floor(i / AC) * TS, TS, TS, 0, 0, 16, 16); };
+  for (const id in IT) {
+    const it = IT[id], n = +id;
+    if (it.block) { const b = BL[n]; draw(n, () => fromTile(b.front || b.tex.side)); continue; }
+    if (it.tool) {
+      const head = rgb(TCOL[it.tier - 1]), dark = rgb(TCOL[it.tier - 1], .7), stick = 'rgb(120,85,45)';
+      draw(n, () => {
+        if (it.tool !== 'sword') line(3, 13, 10, 6, stick, 2);
+        if (it.tool === 'pick') { line(4, 3, 9, 3, head, 1); line(9, 3, 13, 7, head, 2); line(4, 3, 3, 6, dark); line(10, 4, 12, 11, head, 2); line(5, 2, 9, 2, dark); }
+        if (it.tool === 'axe') { for (let y = 2; y < 9; y++) for (let x = 8; x < 14; x++) if (x - 8 + (y > 5 ? y - 5 : 5 - y) < 6) px(x, y, head); line(8, 2, 8, 8, dark); }
+        if (it.tool === 'shovel') { for (let y = 2; y < 7; y++) for (let x = 10; x < 14; x++) px(x, y, head); px(10, 2, dark); px(13, 6, dark); }
+        if (it.tool === 'sword') { line(5, 10, 13, 2, head, 2); line(6, 11, 13, 4, dark); line(3, 9, 7, 13, dark, 1); line(2, 14, 5, 11, stick, 2); }
+      });
+      continue;
+    }
+    draw(n, () => {
+      if (n === 100) line(4, 13, 11, 3, 'rgb(120,85,45)', 2);
+      if (n === 101) { for (let y = 4; y < 12; y++) for (let x = 4; x < 12; x++) if (Math.hypot(x - 7.5, y - 7.5) < 4.2) px(x, y, rgb([35, 35, 38], .8 + TR() * .6)); }
+      if (n === 102 || n === 103) { const col = n === 102 ? [225, 225, 225] : [245, 205, 60]; for (let y = 6; y < 11; y++) for (let x = 2 + (10 - y) * 0; x < 14; x++) if (x > 2 + (y - 6) * 0 && x < 13) px(x, y, rgb(col, y === 6 ? 1.1 : y === 10 ? .7 : .9)); }
+      if (n === 104) { for (let y = 2; y < 14; y++) { const w = y < 6 ? (y - 2) + 2 : 14 - y; for (let x = 8 - w; x < 8 + w; x++) px(x, y, rgb([95, 227, 232], x < 8 ? 1.15 : .85)); } }
+      if (n === 150 || n === 151) { const col = n === 150 ? [215, 90, 90] : [150, 85, 45]; for (let y = 4; y < 13; y++) for (let x = 3; x < 13; x++) if (Math.hypot((x - 8) * .9, y - 8) < 4.6) px(x, y, rgb(col, .85 + TR() * .3)); line(11, 4, 14, 2, 'rgb(240,235,220)', 2); }
+      if (n === 152) { for (let y = 4; y < 14; y++) for (let x = 3; x < 13; x++) if (Math.hypot(x - 8, y - 9) < 4.8) px(x, y, rgb([220, 40, 40], .8 + (x < 7 ? .3 : 0))); line(8, 1, 8, 4, 'rgb(110,70,30)'); px(9, 2, 'rgb(70,150,50)'); px(10, 2, 'rgb(70,150,50)'); }
+    });
+  }
+}
+
+// ---------- recipes ----------
+// Pattern rows use single-character keys; '.' is empty.
+const RECIPES = [
+  { p: ['L'], k: { L: LOG }, out: [PLANKS, 4] },
+  { p: ['P', 'P'], k: { P: PLANKS }, out: [100, 4] },
+  { p: ['PP', 'PP'], k: { P: PLANKS }, out: [TABLE, 1] },
+  { p: ['CCC', 'C.C', 'CCC'], k: { C: COBBLE }, out: [FURNACE, 1] },
+  { p: ['PPP', 'P.P', 'PPP'], k: { P: PLANKS }, out: [CHEST, 1] },
+  { p: ['K', 'S'], k: { K: 101, S: 100 }, out: [TORCH, 4] },
+  { p: ['SS', 'SS'], k: { S: STONEB }, out: [BRICKS, 4] },
+];
+[PLANKS, COBBLE, 102, 104].forEach((m, t) => {
+  RECIPES.push({ p: ['MMM', '.S.', '.S.'], k: { M: m, S: 100 }, out: [110 + t, 1] });
+  RECIPES.push({ p: ['MM', 'MS', '.S'], k: { M: m, S: 100 }, out: [120 + t, 1] });
+  RECIPES.push({ p: ['M', 'S', 'S'], k: { M: m, S: 100 }, out: [130 + t, 1] });
+  RECIPES.push({ p: ['M', 'M', 'S'], k: { M: m, S: 100 }, out: [140 + t, 1] });
+});
+function matchRecipe(grid, w) {
+  const h = grid.length / w; let x0 = w, x1 = -1, y0 = h, y1 = -1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (grid[y * w + x]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  if (x1 < 0) return null;
+  const tw = x1 - x0 + 1, th = y1 - y0 + 1;
+  for (const r of RECIPES) {
+    if (r.p.length !== th || r.p[0].length !== tw) continue;
+    for (const mirror of [false, true]) {
+      let ok = true;
+      for (let y = 0; y < th && ok; y++) for (let x = 0; x < tw && ok; x++) {
+        const ch = r.p[y][mirror ? tw - 1 - x : x], want = ch === '.' ? 0 : r.k[ch];
+        const s = grid[(y + y0) * w + x + x0];
+        if ((s ? s.id : 0) !== want) ok = false;
+      }
+      if (ok) return r.out;
+    }
+  }
+  return null;
+}
+const SMELT = { [IRON_ORE]: 102, [GOLD_ORE]: 103, [SAND]: GLASS, 150: 151, [LOG]: 101, [COBBLE]: STONEB };
+const FUEL = { 101: 8, [PLANKS]: 1.5, [LOG]: 1.5, 100: .5, [TABLE]: 1.5, [CHEST]: 1.5 };
+
+// ---------- world ----------
+const chunks = new Map();   // "cx,cz" -> { cx, cz, data, mesh, water, dirty }
+let edits = new Map();      // "cx,cz" -> Map(idx -> id)
+let torches = new Set(), chests = new Map(), furnaces = new Map();
+const ck = (cx, cz) => cx + ',' + cz;
+const idx = (x, y, z) => (y * CS + z) * CS + x;
+
+function terrainAt(x, z) {
+  const cont = noise(x / 240, z / 240, .5), hills = fbm(x / 70, z / 70, 4), m = Math.max(0, noise(x / 130, z / 130, 9.1) + .1);
+  const h = 29 + cont * 14 + hills * 9 + m * m * 55;
+  const temp = noise(x / 320, z / 320, 3.3) + noise(x / 40, z / 40, 7.7) * .05;
+  return { h: clamp(Math.floor(h), 4, CH - 8), desert: temp > .22 };
+}
+function genChunk(cx, cz) {
+  const data = new Uint8Array(CS * CS * CH), bx = cx * CS, bz = cz * CS;
+  const tops = new Int16Array(CS * CS);
+  for (let z = 0; z < CS; z++) for (let x = 0; x < CS; x++) {
+    const wx = bx + x, wz = bz + z, { h, desert } = terrainAt(wx, wz);
+    tops[z * CS + x] = h;
+    const beach = h <= SEA + 1, snowy = h > 50;
+    for (let y = 0; y < CH; y++) {
+      let id = AIR;
+      if (y === 0) id = BEDROCK;
+      else if (y <= h) {
+        if (y < h - 3) id = STONEB;
+        else if (y < h) id = desert || beach ? SAND : DIRTB;
+        else id = desert || beach ? SAND : snowy ? SNOWY : GRASSB;
+        if (y < 3 && hash3(wx, y, wz, 5) < .5) id = BEDROCK;
+        // Caves: carve where two noise fields both cross zero, leaving seabeds intact.
+        if (y > 2 && !(beach && y > h - 6) && id !== BEDROCK) {
+          const a = noise(wx / 22, y / 14, wz / 22), b = noise(wx / 22 + 40, y / 14 + 40, wz / 22 + 40);
+          if (a * a + b * b < .006 + (y < 20 ? .004 : 0)) id = AIR;
+        }
+        if (id === STONEB) {
+          const r = hash3(wx, y, wz, 1);
+          if (y < 14 && r < .0016) id = CRYSTAL_ORE;
+          else if (y < 24 && r < .004) id = GOLD_ORE;
+          else if (y < 44 && r < .011) id = IRON_ORE;
+          else if (r < .022) id = COAL_ORE;
+        }
+      } else if (y <= SEA) id = WATER;
+      data[idx(x, y, z)] = id;
+    }
+  }
+  // Trees and cacti, including ones rooted in neighbouring chunks whose leaves reach in.
+  for (let tz = bz - 2; tz < bz + CS + 2; tz++) for (let tx = bx - 2; tx < bx + CS + 2; tx++) {
+    const r = hash3(tx, 0, tz, 9); if (r > .02) continue;
+    const { h, desert } = terrainAt(tx, tz);
+    if (h <= SEA + 1 || h > 50) continue;
+    const lx = tx - bx, lz = tz - bz, inside = lx >= 0 && lx < CS && lz >= 0 && lz < CS;
+    if (inside && data[idx(lx, h, lz)] !== (desert ? SAND : GRASSB)) continue;
+    if (desert) {
+      if (r > .006 || !inside) continue;
+      const th = 2 + (hash3(tx, 1, tz, 3) * 2 | 0);
+      for (let y = h + 1; y <= h + th; y++) data[idx(lx, y, lz)] = CACTUS;
+      continue;
+    }
+    if (r > .014) continue;
+    const th = 4 + (hash3(tx, 2, tz, 4) * 3 | 0), top = h + th;
+    for (let y = top - 2; y <= top + 1; y++) {
+      const rad = y >= top ? 1 : 2;
+      for (let dz = -rad; dz <= rad; dz++) for (let dx = -rad; dx <= rad; dx++) {
+        if (rad === 2 && Math.abs(dx) === 2 && Math.abs(dz) === 2 && hash3(tx + dx, y, tz + dz, 6) < .6) continue;
+        const x = lx + dx, z = lz + dz;
+        if (x < 0 || x >= CS || z < 0 || z >= CS || y >= CH) continue;
+        if (data[idx(x, y, z)] === AIR) data[idx(x, y, z)] = LEAVES;
+      }
+    }
+    if (inside) { for (let y = h + 1; y < top; y++) data[idx(lx, y, lz)] = LOG; data[idx(lx, h, lz)] = DIRTB; }
+  }
+  const e = edits.get(ck(cx, cz));
+  if (e) for (const [i, id] of e) data[i] = id;
+  return data;
+}
+function chunkData(cx, cz) {
+  const k = ck(cx, cz); let c = chunks.get(k);
+  if (!c) { c = { cx, cz, data: genChunk(cx, cz), mesh: null, water: null, dirty: true }; chunks.set(k, c); }
+  return c;
+}
+function getBlock(x, y, z) {
+  if (y < 0) return BEDROCK; if (y >= CH) return AIR;
+  const cx = Math.floor(x / CS), cz = Math.floor(z / CS);
+  return chunkData(cx, cz).data[idx(x - cx * CS, y, z - cz * CS)];
+}
+function setBlock(x, y, z, id) {
+  if (y < 0 || y >= CH) return;
+  const cx = Math.floor(x / CS), cz = Math.floor(z / CS), lx = x - cx * CS, lz = z - cz * CS, c = chunkData(cx, cz), i = idx(lx, y, lz);
+  const old = c.data[i]; c.data[i] = id;
+  const k = ck(cx, cz); if (!edits.has(k)) edits.set(k, new Map()); edits.get(k).set(i, id);
+  const pk = x + ',' + y + ',' + z;
+  if (old === TORCH) torches.delete(pk); if (id === TORCH) torches.add(pk);
+  if (old === CHEST && id !== CHEST) { const inv = chests.get(pk); if (inv) inv.forEach(s => s && give(s.id, s.n, s.d)); chests.delete(pk); }
+  if (old === FURNACE && id !== FURNACE) { const f = furnaces.get(pk); if (f) ['inp', 'fuel', 'out'].forEach(s => f[s] && give(f[s].id, f[s].n)); furnaces.delete(pk); }
+  const rad = (old === TORCH || id === TORCH) ? 8 : 1;
+  const done = new Set();
+  for (const dx of [-rad, 0, rad]) for (const dz of [-rad, 0, rad]) {
+    const kk = ck(Math.floor((x + dx) / CS), Math.floor((z + dz) / CS));
+    if (done.has(kk)) continue; done.add(kk);
+    const cc = chunks.get(kk); if (cc) { cc.dirty = true; if (kk === k) rebuild(cc); }
+  }
+}
+
+// ---------- meshing ----------
+const FACES = [
+  { d: [1, 0, 0], c: [[1, 0, 1], [1, 0, 0], [1, 1, 0], [1, 1, 1]], s: .8, uv: p => [1 - p[2], p[1]], t: 'side' },
+  { d: [-1, 0, 0], c: [[0, 0, 0], [0, 0, 1], [0, 1, 1], [0, 1, 0]], s: .8, uv: p => [p[2], p[1]], t: 'side' },
+  { d: [0, 1, 0], c: [[0, 1, 1], [1, 1, 1], [1, 1, 0], [0, 1, 0]], s: 1, uv: p => [p[0], 1 - p[2]], t: 'top' },
+  { d: [0, -1, 0], c: [[0, 0, 0], [1, 0, 0], [1, 0, 1], [0, 0, 1]], s: .5, uv: p => [p[0], p[2]], t: 'bottom' },
+  { d: [0, 0, 1], c: [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]], s: .65, uv: p => [p[0], p[1]], t: 'front' },
+  { d: [0, 0, -1], c: [[1, 0, 0], [0, 0, 0], [0, 1, 0], [1, 1, 0]], s: .65, uv: p => [1 - p[0], p[1]], t: 'front' },
+];
+const TORCH_BOX = [7 / 16, 0, 7 / 16, 9 / 16, 13 / 16, 9 / 16];
+const skyPass = id => id === AIR || id === LEAVES || id === GLASS || id === TORCH || id === WATER;
+function topAt(x, z) { for (let y = CH - 1; y > 0; y--) if (!skyPass(getBlock(x, y, z))) return y + 1; return 1; }
+function showFace(a, b) {
+  if (b === AIR || b === TORCH) return true;
+  const A = BL[a], B = BL[b];
+  if (A.liquid) return false;
+  if (B.liquid) return true;
+  if (B.cutout) return a !== b;
+  return false;
+}
+function buildChunk(c) {
+  const bx = c.cx * CS, bz = c.cz * CS;
+  for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) chunkData(c.cx + dx, c.cz + dz);
+  const tops = new Int16Array(18 * 18);
+  for (let z = -1; z <= CS; z++) for (let x = -1; x <= CS; x++) tops[(z + 1) * 18 + x + 1] = topAt(bx + x, bz + z);
+  const lights = [];
+  for (const k of torches) { const [x, y, z] = k.split(',').map(Number); if (x > bx - 9 && x < bx + CS + 9 && z > bz - 9 && z < bz + CS + 9) lights.push([x + .5, y + .5, z + .5]); }
+  const sky = (x, y, z) => {
+    const t = (xx, zz) => tops[(zz + 1) * 18 + xx + 1];
+    if (x < -1 || x > CS || z < -1 || z > CS) return 1;
+    if (y >= t(x, z)) return 1;
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const xx = x + dx, zz = z + dz; if (xx >= -1 && xx <= CS && zz >= -1 && zz <= CS && y >= t(xx, zz)) return .55; }
+    return .08;
+  };
+  const blk = (wx, wy, wz) => { let l = 0; for (const p of lights) { const d = Math.hypot(wx - p[0], wy - p[1], wz - p[2]); if (d < 9) l = Math.max(l, 1 - d / 9); } return l; };
+  const out = [{ pos: [], uv: [], lit: [], ind: [] }, { pos: [], uv: [], lit: [], ind: [] }];
+  const quad = (o, corners, tileName, shade, sk, bl, uvf) => {
+    const ti = TI[tileName], tu = ti % AC, tv = Math.floor(ti / AC), e = .002, base = o.pos.length / 3;
+    for (const p of corners) {
+      o.pos.push(p[0], p[1], p[2]);
+      const [u, v] = uvf(p);
+      o.uv.push((tu + clamp(u, e, 1 - e)) / AC, 1 - (tv + 1 - clamp(v, e, 1 - e)) / AR);
+      o.lit.push(sk, bl, shade);
+    }
+    o.ind.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  };
+  const D = c.data;
+  const get = (x, y, z) => (x >= 0 && x < CS && z >= 0 && z < CS) ? (y < 0 ? BEDROCK : y >= CH ? AIR : D[idx(x, y, z)]) : getBlock(bx + x, y, bz + z);
+  for (let y = 0; y < CH; y++) for (let z = 0; z < CS; z++) for (let x = 0; x < CS; x++) {
+    const id = D[idx(x, y, z)]; if (!id) continue;
+    const b = BL[id];
+    if (b.shape === 'torch') {
+      const [x0, y0, z0, x1, y1, z1] = TORCH_BOX;
+      for (const f of FACES) {
+        const cs = f.c.map(p => [x + (p[0] ? x1 : x0), y + (p[1] ? y1 : y0), z + (p[2] ? z1 : z0)]);
+        const uvf = p => f.uv([p[0] - x, p[1] - y, p[2] - z]);
+        quad(out[0], cs, 'torch', f.s, 1, 1, uvf);
+      }
+      continue;
+    }
+    const water = b.liquid, o = out[water ? 1 : 0];
+    for (const f of FACES) {
+      const nx = x + f.d[0], ny = y + f.d[1], nz = z + f.d[2], n = get(nx, ny, nz);
+      if (!showFace(id, n)) continue;
+      if (water && n !== AIR) continue;
+      let tn = f.t === 'top' ? b.tex.top : f.t === 'bottom' ? b.tex.bottom : b.tex.side;
+      if (f.t === 'front' && b.front) tn = b.front;
+      const lift = water && get(x, y + 1, z) !== WATER ? .12 : 0;
+      const cs = f.c.map(p => [x + p[0], y + p[1] - (p[1] && lift ? lift : 0), z + p[2]]);
+      const sk = sky(nx, ny, nz), bl = lights.length ? blk(bx + nx + .5, ny + .5, bz + nz + .5) : 0;
+      quad(o, cs, tn, f.s, sk, bl, p => f.uv([p[0] - x, p[1] - y, p[2] - z]));
+    }
+  }
+  return out;
+}
+function toGeometry(o) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(o.pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(o.uv, 2));
+  g.setAttribute('lit', new THREE.Float32BufferAttribute(o.lit, 3));
+  g.setIndex(o.ind); g.computeBoundingSphere();
+  return g;
+}
+function rebuild(c) {
+  const [solid, water] = buildChunk(c);
+  for (const k of ['mesh', 'water']) if (c[k]) { scene.remove(c[k]); c[k].geometry.dispose(); c[k] = null; }
+  if (solid.ind.length) { c.mesh = new THREE.Mesh(toGeometry(solid), matSolid); c.mesh.position.set(c.cx * CS, 0, c.cz * CS); scene.add(c.mesh); }
+  if (water.ind.length) { c.water = new THREE.Mesh(toGeometry(water), matWater); c.water.position.set(c.cx * CS, 0, c.cz * CS); c.water.renderOrder = 1; scene.add(c.water); }
+  c.dirty = false; c.built = true;
+}
+
+// ---------- three.js setup ----------
+const canvas = $('#view');
+const lock = () => { try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) {} };
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio || 1));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, 1, .05, 400);
+camera.rotation.order = 'YXZ';
+function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+const tex = new THREE.CanvasTexture(atlas); tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter; tex.generateMipmaps = false;
+const uniforms = { map: { value: tex }, day: { value: 1 }, fogColor: { value: new THREE.Color(0x87c5ff) }, fogNear: { value: 36 }, fogFar: { value: RD * CS - 2 }, alpha: { value: 1 } };
+const VS = `attribute vec3 lit; varying vec2 vUv; varying vec3 vLit; varying float vDist;
+void main(){ vUv=uv; vLit=lit; vec4 mv=modelViewMatrix*vec4(position,1.0); vDist=length(mv.xyz); gl_Position=projectionMatrix*mv; }`;
+const FS = `uniform sampler2D map; uniform float day; uniform vec3 fogColor; uniform float fogNear; uniform float fogFar; uniform float alpha;
+varying vec2 vUv; varying vec3 vLit; varying float vDist;
+void main(){ vec4 t=texture2D(map,vUv); if(t.a<0.5) discard;
+  vec3 l=max(vec3(vLit.x*day), vLit.y*vec3(1.0,0.84,0.6)); l=max(l, vec3(0.035));
+  vec3 c=t.rgb*l*vLit.z; float f=smoothstep(fogNear,fogFar,vDist);
+  gl_FragColor=vec4(mix(c,fogColor,f), alpha); }`;
+const matSolid = new THREE.ShaderMaterial({ uniforms, vertexShader: VS, fragmentShader: FS });
+const wUniforms = { ...uniforms, alpha: { value: .72 } };
+const matWater = new THREE.ShaderMaterial({ uniforms: wUniforms, vertexShader: VS, fragmentShader: FS, transparent: true, depthWrite: false, side: THREE.DoubleSide });
+
+const highlight = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1.004, 1.004, 1.004)), new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: .55 }));
+highlight.visible = false; scene.add(highlight);
+const crack = new THREE.Mesh(new THREE.BoxGeometry(1.01, 1.01, 1.01), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthWrite: false }));
+crack.visible = false; scene.add(crack);
+
+function spriteTex(draw) { const c = document.createElement('canvas'); c.width = c.height = 64; draw(c.getContext('2d')); const t = new THREE.CanvasTexture(c); t.magFilter = THREE.NearestFilter; return t; }
+const sun = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshBasicMaterial({ map: spriteTex(g => { g.fillStyle = '#fff6c0'; g.fillRect(8, 8, 48, 48); g.fillStyle = '#ffe680'; g.fillRect(16, 16, 32, 32); }), fog: false, depthWrite: false }));
+const moon = new THREE.Mesh(new THREE.PlaneGeometry(28, 28), new THREE.MeshBasicMaterial({ map: spriteTex(g => { g.fillStyle = '#dfe6f2'; g.fillRect(10, 10, 44, 44); g.fillStyle = '#b9c3d4'; g.fillRect(18, 20, 10, 10); g.fillRect(36, 34, 8, 8); }), fog: false, depthWrite: false }));
+sun.renderOrder = moon.renderOrder = -1; scene.add(sun, moon);
+const starGeo = new THREE.BufferGeometry(); { const a = []; const r = mulberry(5); for (let i = 0; i < 600; i++) { const th = r() * Math.PI * 2, ph = Math.acos(r() * 2 - 1); a.push(Math.sin(ph) * Math.cos(th) * 300, Math.abs(Math.cos(ph)) * 300, Math.sin(ph) * Math.sin(th) * 300); } starGeo.setAttribute('position', new THREE.Float32BufferAttribute(a, 3)); }
+const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: false, transparent: true, opacity: 0, fog: false, depthWrite: false }));
+scene.add(stars);
+const cloudTex = spriteTex(g => { const r = mulberry(11); g.clearRect(0, 0, 64, 64); g.fillStyle = 'rgba(255,255,255,.85)'; for (let i = 0; i < 22; i++) g.fillRect(r() * 64 | 0, r() * 64 | 0, 4 + r() * 12 | 0, 3 + r() * 6 | 0); });
+cloudTex.wrapS = cloudTex.wrapT = THREE.RepeatWrapping; cloudTex.repeat.set(10, 10);
+const clouds = new THREE.Mesh(new THREE.PlaneGeometry(900, 900), new THREE.MeshBasicMaterial({ map: cloudTex, transparent: true, opacity: .8, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+clouds.rotation.x = -Math.PI / 2; scene.add(clouds);
+
+// ---------- player & game state ----------
+const PW = .3, PH = 1.8, EYE = 1.62;
+let W = null;   // world meta: { seed, mode, spawn, time }
+let pl = null;  // player
+let inv = [];   // 36 slots: 0..8 hotbar
+let sel = 0, state = 'menu';
+const keys = {};
+
+function newPlayer(x, y, z) { return { x, y, z, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, onGround: false, hp: 20, food: 20, sat: 5, air: 10, fallStart: null, fly: false, hurtT: 0, regen: 0, starve: 0, inWater: false, eyeWater: false }; }
+function findSurface(x, z) { for (let y = CH - 1; y > 0; y--) { const b = getBlock(x, y, z); if (BL[b].solid) return y + 1; } return CH - 1; }
+function findSpawn() {
+  for (let r = 0; r < 200; r += 7) for (let a = 0; a < 8; a++) {
+    const x = Math.round(Math.cos(a) * r), z = Math.round(Math.sin(a) * r), y = findSurface(x, z);
+    if (y > SEA + 1 && getBlock(x, y - 1, z) !== WATER) return [x + .5, y, z + .5];
+  }
+  return [.5, CH - 2, .5];
+}
+
+// ---------- inventory helpers ----------
+const maxStack = id => IT[id] ? IT[id].stack : 64;
+function give(id, n = 1, d) {
+  if (!IT[id]) return 0;
+  if (IT[id].tool) { for (let i = 0; i < 36 && n > 0; i++) if (!inv[i]) { inv[i] = { id, n: 1, d: d ?? IT[id].dur }; n--; } }
+  else {
+    for (let i = 0; i < 36 && n > 0; i++) if (inv[i] && inv[i].id === id && inv[i].n < maxStack(id)) { const k = Math.min(n, maxStack(id) - inv[i].n); inv[i].n += k; n -= k; }
+    for (let i = 0; i < 36 && n > 0; i++) if (!inv[i]) { const k = Math.min(n, maxStack(id)); inv[i] = { id, n: k }; n -= k; }
+  }
+  renderHotbar(); if (uiOpen) renderUI();
+  return n;
+}
+function takeSel(n = 1) { const s = inv[sel]; if (!s || W.mode === 'creative') return; s.n -= n; if (s.n <= 0) inv[sel] = null; renderHotbar(); }
+function wearSel() {
+  const s = inv[sel]; if (!s || !IT[s.id].tool || W.mode === 'creative') return;
+  s.d--; if (s.d <= 0) { inv[sel] = null; toast(`${IT[s.id].name} quebrou!`); sound('break'); }
+  renderHotbar();
+}
+
+// ---------- input ----------
+addEventListener('keydown', e => {
+  if (e.repeat && !['KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight', 'ControlLeft'].includes(e.code)) return;
+  keys[e.code] = true;
+  if (state !== 'play') return;
+  if (e.code === 'Escape' && uiOpen) { closeUI(); return; }
+  if (e.code.startsWith('Digit')) { const n = +e.code.slice(5); if (n >= 1 && n <= 9) { sel = n - 1; renderHotbar(); showSel(); } }
+  if (e.code === 'KeyE') { e.preventDefault(); if (uiOpen) closeUI(); else openUI(W.mode === 'creative' ? 'creative' : 'inv'); }
+  if (e.code === 'KeyF' && W.mode === 'creative') { pl.fly = !pl.fly; pl.vy = 0; toast(pl.fly ? 'Voo ligado' : 'Voo desligado'); }
+  if (e.code === 'KeyQ') { const s = inv[sel]; if (s) { s.n--; if (s.n <= 0) inv[sel] = null; renderHotbar(); } }
+  if (e.code === 'Space' || e.code.startsWith('Control')) e.preventDefault();
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; mouse.l = mouse.r = false; });
+const mouse = { l: false, r: false, rT: 0 };
+canvas.addEventListener('mousedown', e => {
+  if (state !== 'play' || uiOpen) return;
+  if (document.pointerLockElement !== canvas) { lock(); return; }
+  if (e.button === 0) { mouse.l = true; attack(); }
+  if (e.button === 2) { mouse.r = true; mouse.rT = 0; use(); }
+});
+addEventListener('mouseup', e => { if (e.button === 0) { mouse.l = false; mining = null; } if (e.button === 2) mouse.r = false; });
+addEventListener('contextmenu', e => e.preventDefault());
+addEventListener('mousemove', e => {
+  if (document.pointerLockElement === canvas && state === 'play') {
+    pl.yaw -= e.movementX * .0025; pl.pitch = clamp(pl.pitch - e.movementY * .0025, -1.55, 1.55);
+  }
+  if (cursor) { const c = $('#cursor'); c.style.left = e.clientX + 'px'; c.style.top = e.clientY + 'px'; }
+});
+addEventListener('wheel', e => { if (state === 'play' && !uiOpen) { sel = (sel + (e.deltaY > 0 ? 1 : 8)) % 9; renderHotbar(); showSel(); } }, { passive: true });
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement !== canvas && state === 'play' && !uiOpen) setState('pause');
+});
+
+// ---------- physics ----------
+function solidAt(x, y, z) { return BL[getBlock(Math.floor(x), Math.floor(y), Math.floor(z))].solid; }
+function boxHits(x0, y0, z0, x1, y1, z1) {
+  for (let y = Math.floor(y0); y <= Math.floor(y1 - 1e-6); y++) for (let z = Math.floor(z0); z <= Math.floor(z1 - 1e-6); z++) for (let x = Math.floor(x0); x <= Math.floor(x1 - 1e-6); x++)
+    if (BL[getBlock(x, y, z)].solid) return true;
+  return false;
+}
+function moveBody(b, w, h, dx, dy, dz) {
+  const hit = () => boxHits(b.x - w, b.y, b.z - w, b.x + w, b.y + h, b.z + w);
+  let collided = { x: false, y: false, z: false };
+  b.y += dy;
+  if (hit()) { if (dy < 0) { b.y = Math.floor(b.y) + 1; b.onGround = true; } else b.y = Math.floor(b.y + h) - h - .001; b.vy = 0; collided.y = true; }
+  else b.onGround = false;
+  for (const [ax, d] of [['x', dx], ['z', dz]]) {
+    if (!d) continue;
+    b[ax] += d;
+    if (hit()) { b[ax] = d > 0 ? Math.floor(b[ax] + w) - w - .001 : Math.floor(b[ax] - w) + 1 + w + .001; b['v' + ax] = 0; collided[ax] = true; }
+  }
+  return collided;
+}
+
+function updatePlayer(dt) {
+  const fwd = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0), side = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+  const sneak = keys.ShiftLeft || keys.ShiftRight, sprint = (keys.ControlLeft || keys.ControlRight) && fwd > 0 && (pl.food > 6 || W.mode === 'creative');
+  const feet = getBlock(Math.floor(pl.x), Math.floor(pl.y + .2), Math.floor(pl.z));
+  pl.inWater = feet === WATER || getBlock(Math.floor(pl.x), Math.floor(pl.y + 1), Math.floor(pl.z)) === WATER;
+  pl.eyeWater = getBlock(Math.floor(pl.x), Math.floor(pl.y + EYE), Math.floor(pl.z)) === WATER;
+  let speed = pl.fly ? 11 : sneak ? 1.4 : sprint ? 5.8 : 4.3;
+  if (pl.inWater && !pl.fly) speed *= .55;
+  const sy = Math.sin(pl.yaw), cy = Math.cos(pl.yaw);
+  let mx = (-sy * fwd + cy * side), mz = (-cy * fwd - sy * side);
+  const ml = Math.hypot(mx, mz); if (ml > 0) { mx /= ml; mz /= ml; }
+  const accel = pl.onGround || pl.fly || pl.inWater ? 14 : 4;
+  pl.vx += (mx * speed - pl.vx) * Math.min(1, accel * dt);
+  pl.vz += (mz * speed - pl.vz) * Math.min(1, accel * dt);
+  if (pl.fly) {
+    pl.vy = ((keys.Space ? 1 : 0) - (sneak ? 1 : 0)) * 9;
+  } else if (pl.inWater) {
+    pl.vy = Math.max(pl.vy - 9 * dt, -3); pl.vy *= .9;
+    if (keys.Space) pl.vy = Math.min(pl.vy + 22 * dt, 3.6);
+    pl.fallStart = null;
+  } else {
+    pl.vy = Math.max(pl.vy - 28 * dt, -50);
+    if (keys.Space && pl.onGround) { pl.vy = 8.6; pl.onGround = false; if (W.mode === 'survival') pl.sat -= sprint ? .2 : .05; }
+  }
+  const wasGround = pl.onGround, ox = pl.x, oz = pl.z;
+  if (!pl.onGround && !pl.fly && !pl.inWater && pl.vy < 0 && pl.fallStart === null) pl.fallStart = pl.y;
+  moveBody(pl, PW, PH, pl.vx * dt, pl.vy * dt, pl.vz * dt);
+  // Sneaking keeps you from walking off ledges.
+  if (sneak && wasGround && !pl.fly && !boxHits(pl.x - PW, pl.y - .1, pl.z - PW, pl.x + PW, pl.y, pl.z + PW)) { pl.x = ox; pl.z = oz; pl.vy = 0; pl.y = Math.round(pl.y); pl.onGround = true; }
+  if (pl.onGround) {
+    if (pl.fallStart !== null && W.mode === 'survival') { const d = pl.fallStart - pl.y - 3.2; if (d > 0) damage(Math.floor(d), 'Você caiu de muito alto.'); }
+    pl.fallStart = null;
+    if (pl.fly) pl.fly = false;
+  }
+  if (pl.y < -20) { if (W.mode === 'creative') { pl.y = findSurface(Math.floor(pl.x), Math.floor(pl.z)); pl.vy = 0; } else damage(100, 'Você caiu no vazio.'); }
+  if (W.mode === 'survival') {
+    // Cactus hurts on touch.
+    if (boxHits(pl.x - PW - .05, pl.y, pl.z - PW - .05, pl.x + PW + .05, pl.y + PH, pl.z + PW + .05)) {
+      for (const [dx, dz] of [[-PW - .05, 0], [PW + .05, 0], [0, -PW - .05], [0, PW + .05]]) if (getBlock(Math.floor(pl.x + dx), Math.floor(pl.y + .5), Math.floor(pl.z + dz)) === CACTUS) { damage(1, 'Você abraçou um cacto.', true); break; }
+    }
+    const moved = Math.hypot(pl.vx, pl.vz) * dt;
+    pl.sat -= moved * (sprint ? .1 : .01) + dt * .004;
+    if (pl.sat < 0) { pl.sat += 4; pl.food = Math.max(0, pl.food - 1); }
+    if (pl.food >= 18 && pl.hp < 20) { pl.regen += dt; if (pl.regen > 3) { pl.regen = 0; pl.hp++; pl.sat -= 1.5; } }
+    if (pl.food <= 0) { pl.starve += dt; if (pl.starve > 4) { pl.starve = 0; damage(1, 'Você morreu de fome.'); } }
+    if (pl.eyeWater) { pl.air -= dt; if (pl.air < 0) { pl.air += 1; damage(2, 'Você se afogou.'); } }
+    else pl.air = Math.min(10, pl.air + dt * 4);
+  }
+  pl.hurtT = Math.max(0, pl.hurtT - dt);
+}
+function damage(n, why, quiet) {
+  if (W.mode === 'creative' || state !== 'play') return;
+  if (quiet && pl.hurtT > 0) return;
+  pl.hp -= n; pl.hurtT = .5; sound('hurt');
+  const h = $('#hurt'); h.style.opacity = 1; setTimeout(() => h.style.opacity = 0, 180);
+  if (pl.hp <= 0) { pl.hp = 0; $('#deadMsg').textContent = why; setState('dead'); }
+  renderBars();
+}
+
+// ---------- targeting ----------
+function eyeDir() { const cp = Math.cos(pl.pitch); return [-Math.sin(pl.yaw) * cp, Math.sin(pl.pitch), -Math.cos(pl.yaw) * cp]; }
+function raycast(max = 5) {
+  const ox = pl.x, oy = pl.y + EYE, oz = pl.z, [dx, dy, dz] = eyeDir();
+  let x = Math.floor(ox), y = Math.floor(oy), z = Math.floor(oz);
+  const sx = Math.sign(dx), sy = Math.sign(dy), sz = Math.sign(dz);
+  const tdx = Math.abs(1 / dx), tdy = Math.abs(1 / dy), tdz = Math.abs(1 / dz);
+  let tx = (sx > 0 ? x + 1 - ox : ox - x) * tdx, ty = (sy > 0 ? y + 1 - oy : oy - y) * tdy, tz = (sz > 0 ? z + 1 - oz : oz - z) * tdz;
+  let n = [0, 0, 0], t = 0;
+  while (t <= max) {
+    const id = getBlock(x, y, z);
+    if (id && id !== WATER) return { x, y, z, n, id, t };
+    if (tx < ty && tx < tz) { x += sx; t = tx; tx += tdx; n = [-sx, 0, 0]; }
+    else if (ty < tz) { y += sy; t = ty; ty += tdy; n = [0, -sy, 0]; }
+    else { z += sz; t = tz; tz += tdz; n = [0, 0, -sz]; }
+  }
+  return null;
+}
+function mobRay(max) {
+  const ox = pl.x, oy = pl.y + EYE, oz = pl.z, d = eyeDir(); let best = null;
+  for (const m of mobs) {
+    const w = m.w, lo = [m.x - w, m.y, m.z - w], hi = [m.x + w, m.y + m.h, m.z + w], o = [ox, oy, oz];
+    let t0 = 0, t1 = max;
+    for (let i = 0; i < 3; i++) {
+      if (Math.abs(d[i]) < 1e-9) { if (o[i] < lo[i] || o[i] > hi[i]) { t0 = Infinity; break; } continue; }
+      let a = (lo[i] - o[i]) / d[i], b = (hi[i] - o[i]) / d[i]; if (a > b) [a, b] = [b, a];
+      t0 = Math.max(t0, a); t1 = Math.min(t1, b);
+    }
+    if (t0 <= t1 && (!best || t0 < best.t)) best = { m, t: t0 };
+  }
+  return best;
+}
+
+let mining = null;
+function attack() {
+  const hitM = mobRay(3.6), hitB = raycast();
+  if (hitM && (!hitB || hitM.t < hitB.t)) {
+    const s = inv[sel], it = s && IT[s.id];
+    const dmg = it && it.tool ? it.dmg : 1;
+    hurtMob(hitM.m, dmg); if (it && it.tool) wearSel();
+    return;
+  }
+  if (hitB) mining = { x: hitB.x, y: hitB.y, z: hitB.z, p: 0 };
+}
+function breakTime(id) {
+  const b = BL[id]; if (W.mode === 'creative') return .12;
+  const s = inv[sel], it = s && IT[s.id];
+  let t = b.hard * 1.5;
+  const right = it && it.tool === b.tool;
+  if (right) t /= it.speed;
+  if (b.tool === 'pick' && !(right && it.tier >= b.tier)) t *= 3.3;
+  return Math.max(t, .05);
+}
+function finishBreak(x, y, z, id) {
+  const b = BL[id]; setBlock(x, y, z, AIR); sound('break');
+  if (W.mode === 'creative') return;
+  const s = inv[sel], it = s && IT[s.id];
+  const canHarvest = b.tool !== 'pick' || (it && it.tool === 'pick' && it.tier >= b.tier);
+  if (canHarvest) {
+    if (id === LEAVES) { if (Math.random() < .06) give(152); }
+    else if (b.drop) give(b.drop, 1);
+  } else toast('Você precisa de uma picareta melhor.');
+  if (it && it.tool) wearSel();
+}
+function use() {
+  const hit = raycast(); const s = inv[sel];
+  if (hit && BL[hit.id].use && !keys.ShiftLeft) { openUI(BL[hit.id].use, hit.x + ',' + hit.y + ',' + hit.z); return; }
+  if (s && IT[s.id].food) { if (pl.food < 20 || W.mode === 'creative') { pl.food = Math.min(20, pl.food + IT[s.id].food); pl.sat = Math.min(pl.food, pl.sat + IT[s.id].food * .6); takeSel(); sound('eat'); renderBars(); toast('Nham!'); } return; }
+  if (!hit || !s || !IT[s.id].block) return;
+  const [x, y, z] = [hit.x + hit.n[0], hit.y + hit.n[1], hit.z + hit.n[2]];
+  const cur = getBlock(x, y, z); if (cur !== AIR && cur !== WATER) return;
+  if (y < 0 || y >= CH) return;
+  if (s.id === TORCH && !BL[getBlock(x, y - 1, z)].solid) { toast('A tocha precisa de um bloco embaixo.'); return; }
+  if (BL[s.id].solid) {
+    if (x + 1 > pl.x - PW && x < pl.x + PW && y + 1 > pl.y && y < pl.y + PH && z + 1 > pl.z - PW && z < pl.z + PW) return;
+    for (const m of mobs) if (x + 1 > m.x - m.w && x < m.x + m.w && y + 1 > m.y && y < m.y + m.h && z + 1 > m.z - m.w && z < m.z + m.w) return;
+  }
+  setBlock(x, y, z, s.id); takeSel(); sound('place');
+}
+
+// ---------- mobs ----------
+const mobs = [];
+const mobMats = {};
+function mmat(hex) { if (!mobMats[hex]) { mobMats[hex] = new THREE.MeshBasicMaterial({ color: hex }); mobMats[hex].userData.base = new THREE.Color(hex); } return mobMats[hex]; }
+function box(w, h, d, hex, x, y, z, parent) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mmat(hex)); m.position.set(x, y, z); parent.add(m); return m; }
+function makeMob(kind, x, y, z) {
+  const g = new THREE.Group(), m = { kind, x, y, z, vx: 0, vy: 0, vz: 0, yaw: Math.random() * 6.28, onGround: false, g, t: 0, hurtT: 0, legs: [], cool: 0, think: 0, wx: 0, wz: 0 };
+  if (kind === 'javali') {
+    Object.assign(m, { w: .45, h: .95, hp: 8, speed: 1.4 });
+    box(.8, .55, 1.2, 0x7a4e2d, 0, .65, 0, g); box(.6, .5, .5, 0x8a5a35, 0, .75, -.75, g); box(.3, .2, .12, 0xd9a07a, 0, .68, -1.03, g);
+    box(.08, .16, .08, 0xf0ead8, .14, .62, -1.05, g); box(.08, .16, .08, 0xf0ead8, -.14, .62, -1.05, g);
+    box(.1, .1, .02, 0x111111, .17, .86, -1.01, g); box(.1, .1, .02, 0x111111, -.17, .86, -1.01, g);
+    box(.12, .3, .12, 0x5b3920, 0, .95, .1, g);
+    for (const [lx, lz] of [[.25, .4], [-.25, .4], [.25, -.4], [-.25, -.4]]) { const leg = new THREE.Group(); leg.position.set(lx, .4, lz); box(.2, .4, .2, 0x5b3920, 0, -.2, 0, leg); g.add(leg); m.legs.push(leg); }
+  } else {
+    Object.assign(m, { w: .35, h: 1.75, hp: 16, speed: 2.6 });
+    box(.6, .7, .35, 0x2d2440, 0, 1.0, 0, g); const head = box(.5, .5, .5, 0x3b2f55, 0, 1.6, 0, g);
+    const eye = new THREE.MeshBasicMaterial({ color: 0xff5ae0 }); eye.userData.glow = true;
+    for (const ex of [.12, -.12]) { const e = new THREE.Mesh(new THREE.BoxGeometry(.12, .07, .02), eye); e.position.set(ex, 1.63, -.26); g.add(e); }
+    for (const ax of [.42, -.42]) { const arm = new THREE.Group(); arm.position.set(ax, 1.3, 0); box(.2, .7, .2, 0x2d2440, 0, -.3, 0, arm); arm.rotation.x = -1.3; g.add(arm); }
+    for (const lx of [.15, -.15]) { const leg = new THREE.Group(); leg.position.set(lx, .65, 0); box(.22, .65, .22, 0x221a33, 0, -.32, 0, leg); g.add(leg); m.legs.push(leg); }
+    head.userData.isHead = true;
+  }
+  scene.add(g); mobs.push(m); return m;
+}
+function hurtMob(m, dmg) {
+  m.hp -= dmg; m.hurtT = .3; sound('hit');
+  const [dx, , dz] = eyeDir(); m.vx = dx * 6; m.vz = dz * 6; m.vy = 4; m.flee = 4;
+  if (m.hp <= 0) killMob(m, true);
+}
+function killMob(m, drops) {
+  scene.remove(m.g); m.g.traverse(o => o.geometry && o.geometry.dispose());
+  mobs.splice(mobs.indexOf(m), 1);
+  if (drops && m.kind === 'javali') give(150, 1 + (Math.random() * 2 | 0));
+  if (drops && m.kind === 'sombra' && Math.random() < .5) give(101, 1);
+}
+function updateMobs(dt, day) {
+  const night = day < .45;
+  for (const m of [...mobs]) {
+    m.t += dt; m.cool -= dt; m.hurtT -= dt; m.think -= dt; if (m.flee) m.flee = Math.max(0, m.flee - dt);
+    const dx = pl.x - m.x, dz = pl.z - m.z, dist = Math.hypot(dx, dz);
+    if (dist > 70) { killMob(m); continue; }
+    let tx = 0, tz = 0, sp = m.speed;
+    if (m.kind === 'sombra') {
+      if (!night && m.y >= topAt(Math.floor(m.x), Math.floor(m.z)) - 1) { m.hp -= dt * 3; if (Math.random() < dt * 8) m.hurtT = .1; if (m.hp <= 0) { killMob(m); continue; } }
+      if (dist < 26 && state === 'play' && W.mode === 'survival') { tx = dx / dist; tz = dz / dist; }
+      else if (m.think <= 0) { m.think = 2 + Math.random() * 3; const a = Math.random() * 6.28; m.wx = Math.random() < .5 ? 0 : Math.cos(a); m.wz = Math.sin(a) * (m.wx ? 1 : 0); }
+      if (!tx && !tz) { tx = m.wx; tz = m.wz; sp *= .4; }
+      if (dist < 1.3 && Math.abs(pl.y - m.y) < 1.6 && m.cool <= 0) { m.cool = 1; damage(3, 'Uma sombra te pegou.'); const k = 5 / Math.max(dist, .1); pl.vx += dx * k; pl.vz += dz * k; pl.vy = 5; }
+    } else {
+      if (m.flee) { tx = -dx / (dist || 1); tz = -dz / (dist || 1); sp *= 2.2; }
+      else { if (m.think <= 0) { m.think = 2 + Math.random() * 4; const a = Math.random() * 6.28; const go = Math.random() < .6; m.wx = go ? Math.cos(a) : 0; m.wz = go ? Math.sin(a) : 0; } tx = m.wx; tz = m.wz; }
+    }
+    if (m.hurtT <= 0 || m.onGround) { m.vx += (tx * sp - m.vx) * Math.min(1, 8 * dt); m.vz += (tz * sp - m.vz) * Math.min(1, 8 * dt); }
+    const inW = getBlock(Math.floor(m.x), Math.floor(m.y + .3), Math.floor(m.z)) === WATER;
+    m.vy = inW ? Math.min(m.vy + 14 * dt, 2) : Math.max(m.vy - 28 * dt, -40);
+    const c = moveBody(m, m.w, m.h, m.vx * dt, m.vy * dt, m.vz * dt);
+    if ((c.x || c.z) && m.onGround) m.vy = 8.2;
+    if (m.y < -10) { killMob(m); continue; }
+    if (tx || tz) m.yaw = Math.atan2(-(m.vx), -(m.vz)) || m.yaw;
+    m.g.position.set(m.x, m.y, m.z); m.g.rotation.y = m.yaw;
+    const walk = Math.hypot(m.vx, m.vz) > .3 ? Math.sin(m.t * 10) * .6 : 0;
+    m.legs.forEach((l, i) => l.rotation.x = i % 2 ? walk : -walk);
+  }
+  // Spawning
+  if (W.mode !== 'survival' || mobs.length > 14) return;
+  if (Math.random() > dt * 1.5) return;
+  const a = Math.random() * 6.28, r = 20 + Math.random() * 22, x = Math.floor(pl.x + Math.cos(a) * r), z = Math.floor(pl.z + Math.sin(a) * r);
+  const y = findSurface(x, z), ground = getBlock(x, y - 1, z);
+  if (ground === WATER || ground === LEAVES || y >= CH - 2) return;
+  const hostile = mobs.filter(m => m.kind === 'sombra').length, passive = mobs.length - hostile;
+  if (night && hostile < 8) makeMob('sombra', x + .5, y, z + .5);
+  else if (!night && passive < 7 && ground === GRASSB) makeMob('javali', x + .5, y, z + .5);
+}
+
+// ---------- furnaces ----------
+function tickFurnaces(dt) {
+  for (const f of furnaces.values()) {
+    const res = f.inp && SMELT[f.inp.id];
+    const can = res && (!f.out || (f.out.id === res && f.out.n < maxStack(res)));
+    if (f.burn <= 0 && can && f.fuel && FUEL[f.fuel.id]) { f.burnMax = f.burn = FUEL[f.fuel.id] * 10; f.fuel.n--; if (!f.fuel.n) f.fuel = null; }
+    if (f.burn > 0) { f.burn -= dt; if (can) { f.prog += dt; if (f.prog >= 10) { f.prog = 0; f.inp.n--; if (!f.inp.n) f.inp = null; if (f.out) f.out.n++; else f.out = { id: res, n: 1 }; } } else f.prog = 0; }
+    else f.prog = Math.max(0, f.prog - dt * 2);
+  }
+}
+
+// ---------- UI: inventory, crafting, furnace, chest ----------
+let uiOpen = null, uiKey = null, craft = [], cursor = null;
+function slotHTML(s) {
+  if (!s) return '';
+  let h = `<img src="${ICON[s.id]}" alt="">`;
+  if (s.n > 1) h += `<span class="n">${s.n}</span>`;
+  const it = IT[s.id]; if (it.tool && s.d < it.dur) { const f = s.d / it.dur; h += `<span class="dur"><i style="width:${f * 100}%;background:hsl(${f * 120} 80% 50%)"></i></span>`; }
+  return h;
+}
+function openUI(kind, key) {
+  uiOpen = kind; uiKey = key || null;
+  craft = Array(kind === 'table' ? 9 : 4).fill(null);
+  if (kind === 'furnace' && !furnaces.has(key)) furnaces.set(key, { inp: null, fuel: null, out: null, burn: 0, burnMax: 1, prog: 0 });
+  if (kind === 'chest' && !chests.has(key)) chests.set(key, Array(27).fill(null));
+  mouse.l = mouse.r = false; mining = null;
+  document.exitPointerLock && document.exitPointerLock();
+  $('#ui').hidden = false; renderUI();
+}
+function closeUI() {
+  for (const s of craft) if (s) give(s.id, s.n, s.d);
+  craft = [];
+  if (cursor) { give(cursor.id, cursor.n, cursor.d); cursor = null; }
+  $('#cursor').hidden = true;
+  uiOpen = null; $('#ui').hidden = true;
+  renderHotbar();
+  if (state === 'play') lock();
+}
+// Slot references: [arrayName, index]
+function getArr(name) { return name === 'inv' ? inv : name === 'craft' ? craft : name === 'chest' ? chests.get(uiKey) : null; }
+function clickSlot(arr, i, button, shift) {
+  if (arr === 'x') return;
+  if (arr === 'out') return takeCraft(shift);
+  let A, get, set;
+  if (arr === 'f') { const f = furnaces.get(uiKey); get = () => f[i]; set = v => f[i] = v; if (i === 'out' && cursor && !(cursor.id === (f.out || {}).id)) return; }
+  else { A = getArr(arr); get = () => A[i]; set = v => A[i] = v; }
+  const s = get();
+  if (shift && s && arr === 'inv') {
+    // Quick move: chest <-> inventory, hotbar <-> main.
+    const it = s; set(null);
+    if (uiOpen === 'chest') { const C = chests.get(uiKey); let n = it.n; for (let k = 0; k < 27 && n; k++) if (C[k] && C[k].id === it.id && C[k].n < maxStack(it.id)) { const q = Math.min(n, maxStack(it.id) - C[k].n); C[k].n += q; n -= q; } for (let k = 0; k < 27 && n; k++) if (!C[k]) { C[k] = { ...it, n }; n = 0; } if (n) set({ ...it, n }); }
+    else { const range = i < 9 ? [9, 36] : [0, 9]; let n = it.n; for (let k = range[0]; k < range[1] && n; k++) if (inv[k] && inv[k].id === it.id && inv[k].n < maxStack(it.id) && !IT[it.id].tool) { const q = Math.min(n, maxStack(it.id) - inv[k].n); inv[k].n += q; n -= q; } for (let k = range[0]; k < range[1] && n; k++) if (!inv[k]) { inv[k] = { ...it, n }; n = 0; } if (n) set({ ...it, n }); }
+    renderUI(); return;
+  }
+  if (shift && s && arr === 'chest') { set(null); const left = give(s.id, s.n, s.d); if (left) set({ ...s, n: left }); renderUI(); return; }
+  if (shift && s && arr === 'f') { set(null); const left = give(s.id, s.n); if (left) set({ ...s, n: left }); renderUI(); return; }
+  if (arr === 'f' && i === 'out') { if (s && (!cursor || cursor.id === s.id)) { if (cursor) { cursor.n += s.n; } else cursor = s; set(null); } }
+  else if (button === 2) {
+    if (!cursor && s) { const half = Math.ceil(s.n / 2); cursor = { ...s, n: half }; s.n -= half; if (!s.n) set(null); }
+    else if (cursor && (!s || (s.id === cursor.id && s.n < maxStack(s.id)))) { if (s) s.n++; else set({ ...cursor, n: 1 }); cursor.n--; if (!cursor.n) cursor = null; }
+  } else {
+    if (cursor && s && s.id === cursor.id && !IT[s.id].tool) { const q = Math.min(cursor.n, maxStack(s.id) - s.n); s.n += q; cursor.n -= q; if (!cursor.n) cursor = null; }
+    else { set(cursor); cursor = s || null; }
+  }
+  renderUI();
+}
+function takeCraft(shift) {
+  const w = uiOpen === 'table' ? 3 : 2, out = matchRecipe(craft, w); if (!out) return;
+  const [id, n] = out;
+  const once = () => {
+    if (shift) { if (give(id, n) > 0) return false; }
+    else if (!cursor) cursor = IT[id].tool ? { id, n: 1, d: IT[id].dur } : { id, n };
+    else if (cursor.id === id && !IT[id].tool && cursor.n + n <= maxStack(id)) cursor.n += n;
+    else return false;
+    for (let k = 0; k < craft.length; k++) if (craft[k]) { craft[k].n--; if (!craft[k].n) craft[k] = null; }
+    sound('place');
+    return true;
+  };
+  if (shift) { let guard = 64; while (guard-- && matchRecipe(craft, w) && matchRecipe(craft, w)[0] === id && once()); } else once();
+  renderUI();
+}
+function slotEl(arr, i, s) {
+  const el = document.createElement('div'); el.className = 'slot'; el.innerHTML = slotHTML(s);
+  el.title = s ? IT[s.id].name : '';
+  el.addEventListener('mousedown', e => { e.preventDefault(); clickSlot(arr, i, e.button, e.shiftKey); });
+  return el;
+}
+function gridEl(cls, arr, from, to, src) { const g = document.createElement('div'); g.className = 'grid ' + cls; for (let i = from; i < to; i++) g.appendChild(slotEl(arr, i, src[i])); return g; }
+function h3(t) { const e = document.createElement('h3'); e.textContent = t; return e; }
+function renderUI() {
+  if (!uiOpen) return;
+  const card = $('#uiCard'); card.innerHTML = '';
+  if (uiOpen === 'inv' || uiOpen === 'table') {
+    const w = uiOpen === 'table' ? 3 : 2;
+    card.appendChild(h3(uiOpen === 'table' ? 'Mesa de trabalho' : 'Fabricação'));
+    const row = document.createElement('div'); row.className = 'craft';
+    row.appendChild(gridEl(w === 3 ? 'g3' : 'g2', 'craft', 0, w * w, craft));
+    const ar = document.createElement('span'); ar.className = 'arrow'; ar.textContent = '→'; row.appendChild(ar);
+    const out = matchRecipe(craft, w);
+    row.appendChild(slotEl('out', 0, out ? { id: out[0], n: out[1] } : null));
+    const tip = document.createElement('div'); tip.className = 'tip'; tip.style.maxWidth = '260px';
+    tip.innerHTML = uiOpen === 'table' ? 'Receitas 3×3: ferramentas, fornalha, baú.' : 'Tronco → tábuas · 2 tábuas em pé → gravetos · 4 tábuas → mesa de trabalho.';
+    row.appendChild(tip);
+    card.appendChild(row);
+    card.appendChild(recipeHelp());
+  } else if (uiOpen === 'furnace') {
+    const f = furnaces.get(uiKey);
+    card.appendChild(h3('Fornalha'));
+    const fu = document.createElement('div'); fu.className = 'furn';
+    fu.appendChild(slotEl('f', 'inp', f.inp));
+    const pr = document.createElement('div'); pr.className = 'prog'; pr.innerHTML = `<i id="fProg" style="width:${f.prog / 10 * 100}%"></i>`; pr.style.gridRow = 'span 2'; fu.appendChild(pr);
+    const o = slotEl('f', 'out', f.out); o.style.gridRow = 'span 2'; fu.appendChild(o);
+    fu.appendChild(slotEl('f', 'fuel', f.fuel));
+    card.appendChild(fu);
+    const fl = document.createElement('div'); fl.className = 'flame'; fl.innerHTML = `<i id="fFlame" style="height:${Math.max(0, f.burn / f.burnMax) * 100}%"></i>`;
+    card.appendChild(fl);
+    const tip = document.createElement('div'); tip.className = 'tip'; tip.textContent = 'Em cima: o que vai assar (minério, areia, carne, tronco, pedregulho). Embaixo: combustível (carvão, madeira, gravetos).'; card.appendChild(tip);
+  } else if (uiOpen === 'chest') {
+    card.appendChild(h3('Baú'));
+    card.appendChild(gridEl('g9', 'chest', 0, 27, chests.get(uiKey)));
+  } else if (uiOpen === 'creative') {
+    card.appendChild(h3('Todos os itens — clique para pegar'));
+    const g = document.createElement('div'); g.className = 'grid g9 palette';
+    for (const id of Object.keys(IT).map(Number)) {
+      const el = slotEl('x', 0, { id, n: 1 }); el.onmousedown = e => { e.preventDefault(); cursor = IT[id].tool ? { id, n: 1, d: IT[id].dur } : { id, n: e.button === 2 ? 1 : maxStack(id) }; renderUI(); };
+      g.appendChild(el);
+    }
+    card.appendChild(g);
+    const tr = document.createElement('div'); tr.className = 'tip'; tr.textContent = 'Solte um item fora do inventário para descartá-lo.'; card.appendChild(tr);
+  }
+  card.appendChild(h3('Inventário'));
+  card.appendChild(gridEl('g9', 'inv', 9, 36, inv));
+  card.appendChild(gridEl('g9', 'inv', 0, 9, inv));
+  const c = $('#cursor'); c.hidden = !cursor; c.innerHTML = slotHTML(cursor);
+  renderHotbar();
+}
+function recipeHelp() {
+  const d = document.createElement('details'); d.className = 'tip';
+  d.innerHTML = `<summary>Livro de receitas</summary><div style="columns:2;gap:18px;margin-top:6px;line-height:1.35">
+  <div>Tábuas: 1 tronco</div><div>Gravetos: 2 tábuas (uma sobre a outra)</div><div>Mesa: 2×2 tábuas</div><div>Tocha: carvão sobre graveto</div>
+  <div>Fornalha: 8 pedregulhos em anel</div><div>Baú: 8 tábuas em anel</div><div>Tijolos: 2×2 pedra</div>
+  <div>Picareta: 3 material em cima, 2 gravetos no meio</div><div>Machado: 3 material em L, 2 gravetos</div><div>Pá: 1 material, 2 gravetos</div><div>Espada: 2 material, 1 graveto</div>
+  <div>Materiais: tábuas, pedregulho, lingote de ferro, cristal</div></div>`;
+  return d;
+}
+$('#ui').addEventListener('mousedown', e => { if (e.target.id === 'ui' && cursor) { if (uiOpen !== 'creative') give(cursor.id, cursor.n, cursor.d); cursor = null; renderUI(); } });
+
+// ---------- HUD ----------
+const HEART_D = 'M4.5 8.2 1 4.6C-.2 3.4.2 1.1 2.2.9c1.1-.1 1.8.6 2.3 1.4.5-.8 1.2-1.5 2.3-1.4 2 .2 2.4 2.5 1.2 3.7z';
+const FOOD_D = 'M6.2 1.2c1.4.4 2 1.9 1.4 3.2-.7 1.4-2.3 1.8-3.4 1.4L2.6 7.4a.9.9 0 1 1-1-1L3.2 4.8C2.8 3.7 3.3 2 4.6 1.4c.5-.2 1.1-.3 1.6-.2z';
+const ICO = (d, on, off, f) => `<svg class="ico" viewBox="-.3 -.3 9.6 9.6"><path d="${d}" fill="${off}" stroke="#120808" stroke-width=".6"/><g style="clip-path:inset(0 ${(1 - f) * 100}% 0 0)"><path d="${d}" fill="${on}"/></g></svg>`;
+const HEART = f => ICO(HEART_D, '#e33b3b', '#3a1414', f);
+const DRUM = f => ICO(FOOD_D, '#c98a3e', '#3a2a14', f);
+function renderBars() {
+  const show = W && W.mode === 'survival';
+  $('#bars').style.visibility = show ? 'visible' : 'hidden';
+  if (!show) { $('#air').innerHTML = ''; return; }
+  let h = '', f = ''; for (let i = 0; i < 10; i++) { h += HEART(clamp((pl.hp - i * 2) / 2, 0, 1)); f += DRUM(clamp((pl.food - (9 - i) * 2) / 2, 0, 1)); }
+  $('#hearts').innerHTML = h; $('#food').innerHTML = f;
+  let a = ''; if (pl.eyeWater || pl.air < 10) for (let i = 0; i < Math.ceil(pl.air); i++) a += '<svg class="ico" viewBox="0 0 9 9"><circle cx="4.5" cy="4.5" r="3.5" fill="#9fd8ff" stroke="#2a5c8a"/></svg>';
+  $('#air').innerHTML = a;
+}
+function renderHotbar() {
+  const hb = $('#hotbar'); hb.innerHTML = '';
+  for (let i = 0; i < 9; i++) { const d = document.createElement('div'); d.className = 'slot' + (i === sel ? ' sel' : ''); d.innerHTML = slotHTML(inv[i]); hb.appendChild(d); }
+}
+let toastT = 0;
+function toast(t) { const e = $('#toast'); e.textContent = t; e.style.opacity = 1; toastT = 2; }
+function showSel() { const s = inv[sel]; if (s) toast(IT[s.id].name); }
+
+// ---------- sound ----------
+let ACX = null;
+function sound(kind) {
+  if (!ACX) { try { ACX = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; } }
+  const t = ACX.currentTime, g = ACX.createGain(); g.connect(ACX.destination);
+  if (kind === 'break' || kind === 'place' || kind === 'hit') {
+    const len = kind === 'break' ? .16 : .07, b = ACX.createBuffer(1, ACX.sampleRate * len, ACX.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    const s = ACX.createBufferSource(); s.buffer = b; const f = ACX.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = kind === 'place' ? 900 : kind === 'hit' ? 1500 : 600;
+    s.connect(f).connect(g); g.gain.value = .25; s.start(t);
+  } else {
+    const o = ACX.createOscillator(); o.type = kind === 'hurt' ? 'square' : 'triangle';
+    o.frequency.setValueAtTime(kind === 'hurt' ? 220 : 300, t); o.frequency.exponentialRampToValueAtTime(kind === 'hurt' ? 90 : 500, t + .15);
+    g.gain.setValueAtTime(.08, t); g.gain.exponentialRampToValueAtTime(.0001, t + .18); o.connect(g); o.start(t); o.stop(t + .2);
+  }
+}
+
+// ---------- save / load ----------
+const SKEY = 'blocolandia-v1';
+function saveWorld() {
+  if (!W) return;
+  const e = {}; for (const [k, m] of edits) e[k] = [...m];
+  const data = { W, pl: { ...pl }, inv, sel, edits: e, chests: [...chests], furnaces: [...furnaces] };
+  try { localStorage.setItem(SKEY, JSON.stringify(data)); } catch (err) { toast('Não foi possível salvar (armazenamento cheio).'); }
+}
+function loadSaved() { try { return JSON.parse(localStorage.getItem(SKEY)); } catch (e) { return null; } }
+
+function clearWorld() {
+  for (const c of chunks.values()) for (const k of ['mesh', 'water']) if (c[k]) { scene.remove(c[k]); c[k].geometry.dispose(); }
+  chunks.clear(); while (mobs.length) killMob(mobs[0]);
+}
+function startWorld(saved, mode, seedText) {
+  clearWorld();
+  if (saved) {
+    W = saved.W; SEED = W.seed; seedNoise(SEED);
+    edits = new Map(Object.entries(saved.edits || {}).map(([k, a]) => [k, new Map(a)]));
+    chests = new Map(saved.chests || []); furnaces = new Map(saved.furnaces || []);
+    inv = saved.inv; sel = saved.sel || 0;
+    pl = Object.assign(newPlayer(0, 0, 0), saved.pl);
+  } else {
+    SEED = seedText ? (/^-?\d+$/.test(seedText) ? +seedText | 0 : hashStr(seedText)) : (Math.random() * 2 ** 31) | 0;
+    seedNoise(SEED); edits = new Map(); chests = new Map(); furnaces = new Map();
+    const sp = findSpawn();
+    W = { seed: SEED, mode, spawn: sp, time: .1 };
+    pl = newPlayer(...sp);
+    inv = Array(36).fill(null); sel = 0;
+    if (mode === 'creative') [GRASSB, COBBLE, PLANKS, LOG, GLASS, BRICKS, TORCH, SAND, 113].forEach((id, i) => inv[i] = IT[id].tool ? { id, n: 1, d: IT[id].dur } : { id, n: 64 });
+  }
+  torches = new Set();
+  for (const [k, m] of edits) { const [cx, cz] = k.split(',').map(Number); for (const [i, id] of m) if (id === TORCH) { const x = i % CS, z = Math.floor(i / CS) % CS, y = Math.floor(i / (CS * CS)); torches.add((cx * CS + x) + ',' + y + ',' + (cz * CS + z)); } }
+  // Build the chunks right around the player before showing the world.
+  const pcx = Math.floor(pl.x / CS), pcz = Math.floor(pl.z / CS);
+  for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) rebuild(chunkData(pcx + dx, pcz + dz));
+  renderHotbar(); renderBars();
+  setState('play');
+  toast(W.mode === 'creative' ? 'Modo criativo · F para voar' : 'Comece socando uma árvore para pegar troncos!');
+}
+function setState(s) {
+  state = s;
+  $('#menu').hidden = s !== 'menu'; $('#pause').hidden = s !== 'pause'; $('#dead').hidden = s !== 'dead';
+  $('#hud').hidden = s === 'menu';
+  if (s === 'play') { if (!uiOpen) lock(); }
+  else { if (uiOpen) closeUI(); document.exitPointerLock && document.exitPointerLock(); mouse.l = mouse.r = false; mining = null; }
+  if (s === 'pause' || s === 'menu') saveWorld();
+}
+$('#btnSurv').onclick = () => startWorld(null, 'survival', $('#seed').value.trim());
+$('#btnCrea').onclick = () => startWorld(null, 'creative', $('#seed').value.trim());
+$('#btnCont').onclick = () => { const s = loadSaved(); if (s) startWorld(s); };
+$('#btnResume').onclick = () => setState('play');
+$('#btnSaveQuit').onclick = () => { saveWorld(); setState('menu'); refreshMenu(); };
+$('#lnkLaunch').onclick = () => saveWorld();
+$('#btnRespawn').onclick = () => {
+  const [x, y, z] = W.spawn; Object.assign(pl, { x, y: findSurface(Math.floor(x), Math.floor(z)), z, vx: 0, vy: 0, vz: 0, hp: 20, food: 20, sat: 5, air: 10, fallStart: null });
+  renderBars(); setState('play');
+};
+function refreshMenu() { $('#contRow').hidden = !loadSaved(); }
+addEventListener('beforeunload', () => { if (state !== 'menu') saveWorld(); });
+
+// ---------- chunk streaming ----------
+function streamChunks() {
+  const pcx = Math.floor(pl.x / CS), pcz = Math.floor(pl.z / CS);
+  const need = [];
+  for (let dz = -RD; dz <= RD; dz++) for (let dx = -RD; dx <= RD; dx++) {
+    if (dx * dx + dz * dz > RD * RD + 1) continue;
+    const c = chunkData(pcx + dx, pcz + dz);
+    if (!c.built || c.dirty) need.push([dx * dx + dz * dz, c]);
+  }
+  need.sort((a, b) => a[0] - b[0]);
+  const t0 = performance.now();
+  for (const [, c] of need) { rebuild(c); if (performance.now() - t0 > 8) break; }
+  for (const [k, c] of chunks) {
+    if (Math.abs(c.cx - pcx) > RD + 2 || Math.abs(c.cz - pcz) > RD + 2) {
+      for (const kk of ['mesh', 'water']) if (c[kk]) { scene.remove(c[kk]); c[kk].geometry.dispose(); }
+      chunks.delete(k);
+    }
+  }
+}
+
+// ---------- main loop ----------
+const DAY_LEN = 600;
+const SKY_DAY = new THREE.Color(0x87c5ff), SKY_NIGHT = new THREE.Color(0x0a0f24), SKY_DUSK = new THREE.Color(0xf08a4b);
+let last = performance.now(), saveT = 0, infoT = 0, furnSig = '';
+function frame(now) {
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (W && pl) {
+    if (state === 'play') {
+      W.time = (W.time + dt / DAY_LEN) % 1;
+      if (!uiOpen) updatePlayer(dt);
+      // Mining
+      if (mining && mouse.l && !uiOpen) {
+        const h = raycast();
+        if (!h || h.x !== mining.x || h.y !== mining.y || h.z !== mining.z) { mining = h ? { x: h.x, y: h.y, z: h.z, p: 0 } : null; }
+        else if (BL[h.id].hard !== Infinity) { mining.p += dt / breakTime(h.id); if (mining.p >= 1) { finishBreak(h.x, h.y, h.z, h.id); mining = W.mode === 'creative' ? null : { ...mining, p: 0 }; if (W.mode === 'creative') setTimeout(() => { if (mouse.l) attack(); }, 160); } }
+      } else if (mouse.l && !mining && !uiOpen) attack();
+      if (mouse.r && !uiOpen) { mouse.rT += dt; if (mouse.rT > .25) { mouse.rT = .05; use(); } }
+      tickFurnaces(dt);
+      saveT += dt; if (saveT > 20) { saveT = 0; saveWorld(); }
+    }
+    const ang = W.time * Math.PI * 2, sunH = Math.sin(ang);
+    const day = clamp(.18 + sunH * 1.4, .12, 1);
+    if (state === 'play' || state === 'dead') updateMobs(state === 'play' ? dt : 0, day);
+    streamChunks();
+    // Sky
+    const sky = SKY_NIGHT.clone().lerp(SKY_DAY, clamp((day - .12) / .88, 0, 1));
+    const dusk = clamp(1 - Math.abs(sunH) * 4, 0, 1) * .55; sky.lerp(SKY_DUSK, dusk * (day > .15 ? 1 : .3));
+    const fog = pl.eyeWater ? new THREE.Color(0x1d3f8a) : sky;
+    scene.background = fog; uniforms.fogColor.value.copy(fog); wUniforms.fogColor.value.copy(fog);
+    uniforms.day.value = day; wUniforms.day.value = day;
+    uniforms.fogNear.value = wUniforms.fogNear.value = pl.eyeWater ? 2 : 34;
+    uniforms.fogFar.value = wUniforms.fogFar.value = pl.eyeWater ? 16 : RD * CS - 4;
+    for (const m of Object.values(mobMats)) m.color.copy(m.userData.base).multiplyScalar(Math.max(day, .3));
+    camera.position.set(pl.x, pl.y + EYE - (keys.ShiftLeft && !pl.fly ? .12 : 0), pl.z);
+    camera.rotation.set(pl.pitch, pl.yaw, 0);
+    const sd = new THREE.Vector3(Math.cos(ang), Math.sin(ang), .25).normalize();
+    sun.position.copy(camera.position).addScaledVector(sd, 300); sun.lookAt(camera.position);
+    moon.position.copy(camera.position).addScaledVector(sd, -300); moon.lookAt(camera.position);
+    stars.position.copy(camera.position); stars.material.opacity = clamp(1 - day * 2.2, 0, 1);
+    clouds.position.set(pl.x, 96, pl.z); cloudTex.offset.set((pl.x / 900 * 6) + now / 400000, (-pl.z / 900 * 6));
+    clouds.material.opacity = .15 + day * .4;
+    // Target highlight
+    const hit = state === 'play' && !uiOpen ? raycast() : null;
+    highlight.visible = !!hit;
+    if (hit) highlight.position.set(hit.x + .5, hit.y + .5, hit.z + .5);
+    const mp = mining && hit && mouse.l ? mining.p : 0;
+    crack.visible = mp > 0; if (mp > 0) { crack.position.copy(highlight.position); crack.material.opacity = mp * .55; }
+    $('#mine').hidden = !(mp > 0); $('#mine i').style.width = (mp * 100) + '%';
+    $('#water').hidden = !pl.eyeWater;
+    infoT -= dt;
+    if (infoT <= 0) {
+      infoT = .25; renderBars();
+      const hrs = Math.floor((W.time * 24 + 6) % 24), mins = Math.floor((W.time * 24 * 60) % 60);
+      $('#info').textContent = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')} · X ${Math.floor(pl.x)} Y ${Math.floor(pl.y)} Z ${Math.floor(pl.z)}${W.mode === 'creative' ? ' · criativo' : ''}`;
+      if (uiOpen === 'furnace') {
+        const f = furnaces.get(uiKey), p = $('#fProg'), fl = $('#fFlame');
+        if (p) p.style.width = (f.prog / 10 * 100) + '%'; if (fl) fl.style.height = (Math.max(0, f.burn / f.burnMax) * 100) + '%';
+        const sig = JSON.stringify([f.inp, f.fuel, f.out]); if (sig !== furnSig) { furnSig = sig; renderUI(); }
+      }
+    }
+    if (toastT > 0) { toastT -= dt; if (toastT <= 0) $('#toast').style.opacity = 0; }
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+makeIcons();
+refreshMenu();
+// Menu backdrop: a slowly turning view of a demo world.
+SEED = 4242; seedNoise(SEED); W = { seed: SEED, mode: 'creative', spawn: [0, 40, 0], time: .3 }; pl = newPlayer(.5, 0, .5); pl.y = findSurface(0, 0) + 6;
+inv = Array(36).fill(null);
+const spin = () => { if (state === 'menu' && W && W.seed === 4242) { pl.yaw += .0015; pl.pitch = -.25; } requestAnimationFrame(spin); };
+spin();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fliperama</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Launcher: a title strip and one card per game, each with a drawn preview, a short pitch and its play button. */
+:root{
+  --bg:#0e0c13; --panel:#18151f; --line:#2c2736; --ink:#f2eef6; --muted:#a7a0b2;
+  --brasa:#ff7a2b; --geada:#4cc6f5; --felt:#1b5640; --grass:#5fa53a; --gold:#f2c14e;
+  --display:"Bungee","Arial Black",Impact,system-ui,sans-serif;
+  --body:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -10%,#2a2040 0,var(--bg) 60%);color:var(--ink);font-family:var(--body);font-size:18px;line-height:1.4}
+.wrap{max-width:1100px;margin:0 auto;padding:40px 16px 48px;display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-direction:column;gap:6px}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(40px,8vw,76px);line-height:.95;margin:0;letter-spacing:.01em}
+h1 span{background:linear-gradient(90deg,var(--brasa),var(--gold) 40%,var(--grass) 70%,var(--geada));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--muted);margin:0;font-size:19px}
+.games{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.game{background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;transition:transform .15s,border-color .15s;text-decoration:none;color:inherit}
+.game:hover,.game:focus-visible{transform:translateY(-4px);border-color:var(--accent)}
+.game:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.preview{aspect-ratio:16/9;display:block;width:100%;background:#000}
+.body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:10px;flex:1}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-size:13px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;padding:2px 8px;border-radius:4px;background:#25202f;color:var(--muted)}
+h2{font-family:var(--display);font-weight:400;font-size:26px;margin:0;line-height:1.05}
+.body p{margin:0;color:var(--muted)}
+.play{margin-top:auto;align-self:flex-start;font-family:var(--display);font-size:15px;padding:10px 18px;border-radius:6px;background:var(--accent);color:#120e08}
+.foot{color:var(--muted);font-size:15px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span>Fliperama</span></h1>
+    <p class="sub">Três jogos, um só lugar. Escolha e divirta-se.</p>
+  </header>
+
+  <section class="games">
+    <a class="game" href="brasa-e-geada.html" style="--accent:var(--brasa)">
+      <svg class="preview" viewBox="0 0 320 180" aria-hidden="true">
+        <rect width="320" height="180" fill="#151119"/>
+        <g fill="#2f2938"><rect x="0" y="150" width="320" height="30"/><rect x="30" y="100" width="150" height="12"/><rect x="200" y="62" width="120" height="12"/></g>
+        <rect x="110" y="150" width="50" height="10" fill="#ff7a1c"/><rect x="190" y="150" width="50" height="10" fill="#8fdcff"/>
+        <rect x="80" y="100" width="40" height="7" fill="#7dc23a"/>
+        <path d="M282 62v-22a10 10 0 0 1 20 0v22z" fill="none" stroke="#4cc6f5" stroke-width="3"/>
+        <path d="M252 62v-22a10 10 0 0 1 20 0v22z" fill="none" stroke="#ff7a2b" stroke-width="3"/>
+        <rect x="48" y="128" width="16" height="22" rx="6" fill="#ff7a2b"/><path d="M50 128l4-10 3 6 3-8 3 12z" fill="#ffd36a"/>
+        <rect x="70" y="128" width="16" height="22" rx="6" fill="#5cc9f3"/><path d="M72 128l3-8 3 5 3-9 3 12z" fill="#e6faff"/>
+        <path d="M150 85l6 7-6 9-6-9z" fill="#ffb13a"/><path d="M230 45l6 7-6 9-6-9z" fill="#8fdcff"/>
+      </svg>
+      <div class="body">
+        <div class="tags"><span class="tag">2 jogadores</span><span class="tag">15 fases</span><span class="tag">Plataforma</span></div>
+        <h2>Brasa &amp; Geada</h2>
+        <p>Dois espíritos, um teclado. Fogo nada no magma, gelo nada na geada. Usem placas, alavancas, caixas e elevadores para escapar do templo.</p>
+        <span class="play">Jogar</span>
+      </div>
+    </a>
+
+    <a class="game" href="domino.html" style="--accent:var(--gold)">
+      <svg class="preview" viewBox="0 0 320 180" aria-hidden="true">
+        <defs><radialGradient id="felt" cx="50%" cy="40%"><stop offset="0" stop-color="#22694e"/><stop offset="1" stop-color="#14402f"/></radialGradient></defs>
+        <rect width="320" height="180" fill="url(#felt)"/>
+        <g fill="#f6f1e3" stroke="#d8cfb7">
+          <rect x="40" y="76" width="56" height="28" rx="4"/><rect x="98" y="76" width="56" height="28" rx="4"/><rect x="156" y="62" width="28" height="56" rx="4"/><rect x="186" y="76" width="56" height="28" rx="4"/>
+          <rect x="110" y="134" width="22" height="40" rx="3"/><rect x="138" y="134" width="22" height="40" rx="3"/><rect x="166" y="134" width="22" height="40" rx="3"/><rect x="194" y="134" width="22" height="40" rx="3"/>
+        </g>
+        <g stroke="#d8cfb7"><line x1="68" y1="80" x2="68" y2="100"/><line x1="126" y1="80" x2="126" y2="100"/><line x1="160" y1="90" x2="180" y2="90"/><line x1="214" y1="80" x2="214" y2="100"/></g>
+        <g fill="#1c1a17"><circle cx="54" cy="90" r="3"/><circle cx="82" cy="84" r="3"/><circle cx="82" cy="96" r="3"/><circle cx="112" cy="84" r="3"/><circle cx="112" cy="96" r="3"/><circle cx="140" cy="84" r="3"/><circle cx="140" cy="90" r="3"/><circle cx="140" cy="96" r="3"/>
+          <circle cx="164" cy="70" r="3"/><circle cx="176" cy="70" r="3"/><circle cx="164" cy="82" r="3"/><circle cx="176" cy="82" r="3"/><circle cx="164" cy="98" r="3"/><circle cx="176" cy="98" r="3"/><circle cx="164" cy="110" r="3"/><circle cx="176" cy="110" r="3"/>
+          <circle cx="200" cy="84" r="3"/><circle cx="200" cy="96" r="3"/><circle cx="228" cy="90" r="3"/></g>
+        <g fill="#7a2e1d"><rect x="120" y="8" width="16" height="30" rx="3"/><rect x="140" y="8" width="16" height="30" rx="3"/><rect x="160" y="8" width="16" height="30" rx="3"/><rect x="180" y="8" width="16" height="30" rx="3"/></g>
+      </svg>
+      <div class="body">
+        <div class="tags"><span class="tag">Contra a CPU</span><span class="tag">3 níveis</span><span class="tag">Clássico</span></div>
+        <h2>Dominó</h2>
+        <p>O dominó de sempre: compre do monte, feche as pontas e bata primeiro. Fácil, Médio ou Difícil, em que a CPU conta pedras e tenta te trancar.</p>
+        <span class="play">Jogar</span>
+      </div>
+    </a>
+
+    <a class="game" href="blocolandia.html" style="--accent:var(--grass)">
+      <svg class="preview" viewBox="0 0 320 180" aria-hidden="true">
+        <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa8f0"/><stop offset="1" stop-color="#a8d8ff"/></linearGradient></defs>
+        <rect width="320" height="180" fill="url(#sky)"/>
+        <rect x="250" y="20" width="26" height="26" fill="#fff3b0"/>
+        <g fill="#fff" opacity=".85"><rect x="30" y="26" width="60" height="10"/><rect x="44" y="20" width="30" height="8"/><rect x="170" y="38" width="50" height="8"/></g>
+        <g><rect x="0" y="120" width="320" height="60" fill="#86603a"/>
+          <rect x="0" y="112" width="120" height="12" fill="#5fa53a"/><rect x="120" y="100" width="60" height="12" fill="#5fa53a"/><rect x="120" y="112" width="60" height="12" fill="#86603a"/><rect x="180" y="112" width="140" height="12" fill="#5fa53a"/>
+          <rect x="0" y="150" width="320" height="30" fill="#7f7f7f"/><rect x="40" y="160" width="10" height="8" fill="#222"/><rect x="230" y="156" width="10" height="8" fill="#d8a07a"/><rect x="150" y="166" width="10" height="8" fill="#5fe3e8"/></g>
+        <rect x="58" y="72" width="12" height="40" fill="#6b4a26"/><rect x="38" y="48" width="52" height="30" fill="#3a8028"/><rect x="48" y="38" width="32" height="14" fill="#3a8028"/>
+        <rect x="236" y="64" width="12" height="48" fill="#6b4a26"/><rect x="216" y="40" width="52" height="30" fill="#2f7322"/>
+        <rect x="140" y="76" width="12" height="24" fill="#b8894f"/><rect x="152" y="76" width="12" height="24" fill="#b8894f"/><rect x="140" y="64" width="24" height="12" fill="#9b4a2a"/>
+      </svg>
+      <div class="body">
+        <div class="tags"><span class="tag">3D</span><span class="tag">Mundo infinito</span><span class="tag">Sobrevivência e criativo</span></div>
+        <h2>Blocolândia</h2>
+        <p>Cave, minere, fabrique ferramentas e construa. Cavernas, minérios, fornalha, baús, dia e noite, javalis e sombras noturnas. Precisa de teclado e mouse.</p>
+        <span class="play">Jogar</span>
+      </div>
+    </a>
+  </section>
+  <p class="foot">O progresso de cada jogo fica salvo neste navegador. A Blocolândia e as fontes precisam de internet na primeira vez que abrem.</p>
+</div>
+</body>
+</html>

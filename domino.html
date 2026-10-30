@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dominó</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Felt table: score strip, opponent hand, the chain on the felt, then your hand and actions. Single dark theme like the rest of the arcade. */
+:root{
+  --bg:#0d1512; --felt:#14402f; --felt-hi:#1b5640; --line:#2a5a47; --panel:#16241f; --ink:#f2efe6; --muted:#a9b8ae;
+  --bone:#f6f1e3; --bone-edge:#d8cfb7; --pip:#1c1a17; --gold:#f2c14e; --play:#7ee2a8; --cpu:#ff8f6b;
+  --display:"Bungee","Arial Black",Impact,system-ui,sans-serif;
+  --body:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.35}
+.wrap{max-width:1100px;margin:0 auto;padding:14px 16px 28px;display:flex;flex-direction:column;gap:12px}
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px}
+.brand{font-family:var(--display);font-size:22px;letter-spacing:.02em}
+.brand small{font-family:var(--body);font-size:14px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-left:8px}
+.scores{display:flex;gap:10px;align-items:center}
+.sc{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 12px;display:flex;gap:8px;align-items:baseline}
+.sc .k{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.sc .v{font-family:var(--display);font-size:18px;font-variant-numeric:tabular-nums}
+.sc.you .v{color:var(--play)} .sc.cpu .v{color:var(--cpu)}
+.btn{font-family:var(--display);font-size:14px;letter-spacing:.03em;border-radius:6px;padding:9px 16px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--ink);text-decoration:none;display:inline-block}
+.btn:hover:not(:disabled){filter:brightness(1.15)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{background:var(--gold);color:#2a1e05;border-color:transparent}
+button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.table{position:relative;background:radial-gradient(ellipse at 50% 40%,var(--felt-hi),var(--felt) 70%);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px;min-height:520px;box-shadow:inset 0 0 60px rgba(0,0,0,.35)}
+.row-label{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px}
+.hand{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:64px}
+.board{flex:1;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;align-items:center;gap:3px;padding:10px;border:1px dashed rgba(255,255,255,.12);border-radius:10px;min-height:240px}
+.tile{display:block;border:0;padding:0;background:none;cursor:default;border-radius:6px;transition:transform .12s}
+.tile svg{display:block}
+.hand.mine .tile.ok{cursor:pointer}
+.hand.mine .tile.ok:hover{transform:translateY(-4px)}
+.hand.mine .tile.ok svg rect.face{stroke:var(--play);stroke-width:2.5}
+.hand.mine .tile.sel{transform:translateY(-8px)}
+.hand.mine .tile.sel svg rect.face{stroke:var(--gold);stroke-width:3.5}
+.hand.mine .tile.no{opacity:.55}
+.end{font-family:var(--display);font-size:13px;border:2px dashed var(--gold);color:var(--gold);background:rgba(242,193,78,.12);border-radius:6px;padding:12px 8px;cursor:pointer;animation:pulse 1s infinite alternate}
+@keyframes pulse{to{background:rgba(242,193,78,.3)}}
+.status{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.msg{font-size:19px;font-weight:600;min-height:26px}
+.msg b{color:var(--gold)}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.yard{font-size:15px;color:var(--muted)}
+.overlay{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:rgba(6,14,10,.82);backdrop-filter:blur(3px);border-radius:14px;z-index:5}
+.overlay[hidden]{display:none}
+.card{width:min(520px,100%);display:flex;flex-direction:column;gap:14px;text-align:center;align-items:center}
+h1{font-family:var(--display);font-weight:400;font-size:clamp(34px,7vw,60px);margin:0;line-height:1;color:var(--bone)}
+h2{font-family:var(--display);font-weight:400;font-size:clamp(24px,4vw,36px);margin:0}
+.lead{margin:0;color:var(--muted);font-size:18px;max-width:44ch}
+.diffs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:100%}
+.diff{font:inherit;text-align:left;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:4px}
+.diff:hover{border-color:var(--gold)}
+.diff .n{font-family:var(--display);font-size:16px}
+.diff .d{font-size:15px;color:var(--muted)}
+.diff .w{font-size:14px;color:var(--gold);font-variant-numeric:tabular-nums}
+.foot{color:var(--muted);font-size:15px}
+@media (max-width:600px){.diffs{grid-template-columns:1fr}.table{min-height:420px;padding:10px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Dominó <small id="diffLabel">Escolha o nível</small></div>
+    <div class="scores">
+      <div class="sc you"><span class="k">Você</span><span class="v" id="sYou">0</span></div>
+      <div class="sc cpu"><span class="k">CPU</span><span class="v" id="sCpu">0</span></div>
+      <a class="btn" href="index.html">Launcher</a>
+    </div>
+  </header>
+
+  <main class="table" id="table">
+    <div>
+      <div class="row-label"><span>Mão da CPU</span><span id="cpuCount"></span></div>
+      <div class="hand" id="cpuHand"></div>
+    </div>
+    <div class="board" id="board" aria-label="Mesa"></div>
+    <div>
+      <div class="row-label"><span>Sua mão</span><span class="yard" id="yard"></span></div>
+      <div class="hand mine" id="myHand"></div>
+    </div>
+    <div class="status">
+      <div class="msg" id="msg" aria-live="polite"></div>
+      <div class="actions">
+        <button class="btn" id="btnBuy" type="button">Comprar</button>
+        <button class="btn" id="btnPass" type="button">Passar</button>
+        <button class="btn" id="btnMenu" type="button">Menu</button>
+      </div>
+    </div>
+
+    <div class="overlay" id="menu">
+      <div class="card">
+        <h1>Dominó</h1>
+        <p class="lead">Você contra a CPU. Cada um recebe 7 pedras e o resto fica no monte. Quem bate primeiro soma os pontos que sobraram na mão do outro. Vence quem chegar a <b>50 pontos</b>.</p>
+        <div class="diffs" id="diffs"></div>
+      </div>
+    </div>
+
+    <div class="overlay" id="roundEnd" hidden>
+      <div class="card">
+        <h2 id="reTitle"></h2>
+        <p class="lead" id="reText"></p>
+        <div class="actions" style="justify-content:center">
+          <button class="btn primary" id="btnNext" type="button">Próxima rodada</button>
+          <button class="btn" id="btnMenu2" type="button">Menu</button>
+        </div>
+      </div>
+    </div>
+  </main>
+  <div class="foot">Clique numa pedra destacada para jogar. Se ela encaixar nas duas pontas, escolha o lado.</div>
+</div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const TARGET = 50;
+const DIFFS = {
+  facil: { name: 'Fácil', desc: 'A CPU joga qualquer pedra que encaixa.' },
+  medio: { name: 'Médio', desc: 'A CPU se livra das pedras mais pesadas primeiro.' },
+  dificil: { name: 'Difícil', desc: 'A CPU conta pedras, lembra do que você não tem e tenta te trancar.' },
+};
+
+// ---------- save ----------
+const KEY = 'domino-v1';
+let save = { wins: {}, losses: {} };
+try { const d = JSON.parse(localStorage.getItem(KEY)); if (d && d.wins) save = d; } catch (e) {}
+const writeSave = () => { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} };
+
+// ---------- tiles ----------
+const PIPS = { 0: [], 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+function half(n, ox, oy, s, rot) {
+  return PIPS[n].map(i => {
+    let cx = (i % 3), cy = Math.floor(i / 3);
+    if (rot) [cx, cy] = [cy, 2 - cx];
+    return `<circle cx="${ox + s * (0.22 + cx * 0.28)}" cy="${oy + s * (0.22 + cy * 0.28)}" r="${s * 0.085}" fill="var(--pip)"/>`;
+  }).join('');
+}
+// Horizontal tile shows a|b left to right; vertical shows a over b.
+function tileSVG(a, b, vertical, s = 30) {
+  const w = vertical ? s : s * 2, h = vertical ? s * 2 : s;
+  const line = vertical ? `<line x1="${s * .15}" y1="${s}" x2="${s * .85}" y2="${s}" stroke="var(--bone-edge)" stroke-width="1.5"/>` : `<line x1="${s}" y1="${s * .15}" x2="${s}" y2="${s * .85}" stroke="var(--bone-edge)" stroke-width="1.5"/>`;
+  const p = vertical ? half(a, 0, 0, s) + half(b, 0, s, s) : half(a, 0, 0, s, true) + half(b, s, 0, s, true);
+  return `<svg width="${w}" height="${h}" viewBox="-1 -1 ${w + 2} ${h + 2}" aria-label="${a} e ${b}"><rect class="face" x="0" y="0" width="${w}" height="${h}" rx="${s * .16}" fill="var(--bone)" stroke="var(--bone-edge)" stroke-width="1.5"/>${line}${p}</svg>`;
+}
+function backSVG(s = 22) {
+  return `<svg width="${s}" height="${s * 2}" viewBox="-1 -1 ${s + 2} ${s * 2 + 2}" aria-hidden="true"><rect x="0" y="0" width="${s}" height="${s * 2}" rx="4" fill="#7a2e1d" stroke="#3d160c" stroke-width="1.5"/><rect x="4" y="4" width="${s - 8}" height="${s * 2 - 8}" rx="3" fill="none" stroke="rgba(255,220,180,.35)"/></svg>`;
+}
+const pips = t => t[0] + t[1];
+const handPips = h => h.reduce((s, t) => s + pips(t), 0);
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+// ---------- state ----------
+let G = null, diff = null, busy = false, selected = -1;
+function newMatch(d) {
+  diff = d;
+  G = { scores: [0, 0], starter: null };
+  $('#diffLabel').textContent = 'Nível ' + DIFFS[d].name;
+  $('#menu').hidden = true;
+  newRound();
+}
+function newRound() {
+  const all = [];
+  for (let a = 0; a <= 6; a++) for (let b = a; b <= 6; b++) all.push([a, b]);
+  shuffle(all);
+  Object.assign(G, { hands: [all.splice(0, 7), all.splice(0, 7)], yard: all, chain: [], turn: 0, passes: 0, lacks: new Set(), over: false });
+  selected = -1;
+  $('#roundEnd').hidden = true;
+  if (G.starter === null) {
+    // First round: whoever holds the highest double (or heaviest tile) opens with it.
+    let best = null;
+    for (const p of [0, 1]) G.hands[p].forEach((t, i) => {
+      const v = (t[0] === t[1] ? 100 : 0) + pips(t);
+      if (!best || v > best.v) best = { p, i, v };
+    });
+    const t = G.hands[best.p].splice(best.i, 1)[0];
+    G.chain.push({ a: t[0], b: t[1] });
+    G.turn = 1 - best.p;
+    say(`${best.p ? 'A CPU' : 'Você'} abriu com <b>${t[0]}|${t[1]}</b>.`);
+  } else {
+    G.turn = G.starter;
+    say(G.turn ? 'A CPU começa esta rodada.' : 'Você começa esta rodada: jogue qualquer pedra.');
+  }
+  render();
+  if (G.turn === 1) cpuTurn();
+}
+
+const ends = () => G.chain.length ? [G.chain[0].a, G.chain[G.chain.length - 1].b] : null;
+function sidesFor(t, e = ends()) {
+  if (!e) return ['R'];
+  const s = [];
+  if (t[0] === e[0] || t[1] === e[0]) s.push('L');
+  if ((t[0] === e[1] || t[1] === e[1]) && !(e[0] === e[1] && s.length)) s.push('R');
+  return s;
+}
+const playable = p => G.hands[p].some(t => sidesFor(t).length);
+
+function place(p, i, side) {
+  const t = G.hands[p].splice(i, 1)[0];
+  if (!G.chain.length) G.chain.push({ a: t[0], b: t[1] });
+  else if (side === 'L') { const e = G.chain[0].a; G.chain.unshift(t[1] === e ? { a: t[0], b: t[1] } : { a: t[1], b: t[0] }); }
+  else { const e = G.chain[G.chain.length - 1].b; G.chain.push(t[0] === e ? { a: t[0], b: t[1] } : { a: t[1], b: t[0] }); }
+  G.passes = 0;
+  sfx(p ? 300 : 420, .07);
+  return t;
+}
+
+function afterMove(p) {
+  if (!G.hands[p].length) return endRound(p, 'bateu');
+  G.turn = 1 - p;
+  render();
+  if (G.turn === 1) cpuTurn();
+  else if (!playable(0)) say(G.yard.length ? 'Você não tem pedra que encaixe. <b>Compre</b> do monte.' : 'Nada encaixa e o monte acabou. <b>Passe</b> a vez.');
+}
+function pass(p) {
+  G.passes++;
+  if (p === 0) ends().forEach(v => G.lacks.add(v));
+  if (G.passes >= 2) return endRound(null, 'trancou');
+  G.turn = 1 - p;
+  render();
+  if (G.turn === 1) cpuTurn();
+}
+
+function endRound(winner, how) {
+  G.over = true;
+  const pts = [handPips(G.hands[0]), handPips(G.hands[1])];
+  let text;
+  if (how === 'trancou') {
+    winner = pts[0] < pts[1] ? 0 : pts[1] < pts[0] ? 1 : null;
+    text = `O jogo trancou. Você tem ${pts[0]} pontos na mão, a CPU tem ${pts[1]}.`;
+  } else text = `${winner ? 'A CPU' : 'Você'} bateu!`;
+  let gain = 0;
+  if (winner !== null) { gain = pts[1 - winner]; G.scores[winner] += gain; G.starter = winner; text += ` ${winner ? 'A CPU' : 'Você'} ganha ${gain} ponto${gain === 1 ? '' : 's'}.`; }
+  else { text += ' Empate: ninguém pontua.'; }
+  render(true);
+  const done = G.scores.some(s => s >= TARGET);
+  $('#reTitle').textContent = done ? (G.scores[0] >= TARGET ? 'Você venceu a partida!' : 'A CPU venceu a partida') : winner === 0 ? 'Rodada sua' : winner === 1 ? 'Rodada da CPU' : 'Rodada empatada';
+  if (done) {
+    const k = G.scores[0] >= TARGET ? 'wins' : 'losses';
+    save[k][diff] = (save[k][diff] || 0) + 1; writeSave();
+    text += ` Placar final: ${G.scores[0]} a ${G.scores[1]}.`;
+  }
+  $('#reText').textContent = text;
+  $('#btnNext').textContent = done ? 'Nova partida' : 'Próxima rodada';
+  $('#btnNext').onclick = () => done ? newMatch(diff) : newRound();
+  setTimeout(() => { $('#roundEnd').hidden = false; $('#btnNext').focus(); }, 700);
+  sfx(winner === 0 ? 660 : 220, .3);
+}
+
+// ---------- CPU ----------
+const wait = ms => new Promise(r => setTimeout(r, ms));
+async function cpuTurn() {
+  busy = true; render();
+  await wait(650);
+  while (!playable(1) && G.yard.length) {
+    G.hands[1].push(G.yard.pop());
+    say('A CPU comprou uma pedra.'); render(); sfx(200, .05);
+    await wait(420);
+  }
+  if (!playable(1)) { say('A CPU passou a vez.'); busy = false; pass(1); return; }
+  const m = choose();
+  const t = place(1, m.i, m.side);
+  say(`A CPU jogou <b>${t[0]}|${t[1]}</b>.${playable(0) || !G.hands[1].length ? '' : G.yard.length ? ' Você precisa comprar.' : ' Você precisa passar.'}`);
+  busy = false;
+  afterMove(1);
+}
+function moves(p) {
+  const out = [];
+  G.hands[p].forEach((t, i) => sidesFor(t).forEach(side => out.push({ i, side, t })));
+  return out;
+}
+function endsAfter(m) {
+  const e = ends();
+  if (!e) return [m.t[0], m.t[1]];
+  const [L, R] = e;
+  if (m.side === 'L') return [m.t[0] === L ? m.t[1] : m.t[0], R];
+  return [L, m.t[0] === R ? m.t[1] : m.t[0]];
+}
+function choose() {
+  const ms = moves(1);
+  if (diff === 'facil') return ms[Math.floor(Math.random() * ms.length)];
+  if (diff === 'medio') {
+    let best = null;
+    for (const m of ms) { const v = pips(m.t) + (m.t[0] === m.t[1] ? 2 : 0) + Math.random() * 1.5; if (!best || v > best.v) best = { ...m, v }; }
+    return best;
+  }
+  // Difícil: count how many tiles of each number the human could still hold.
+  const seen = [0, 0, 0, 0, 0, 0, 0];
+  const mark = t => { seen[t[0]]++; if (t[1] !== t[0]) seen[t[1]]++; };
+  G.hands[1].forEach(mark); G.chain.forEach(c => mark([c.a, c.b]));
+  let best = null;
+  for (const m of ms) {
+    const rest = G.hands[1].filter((_, k) => k !== m.i);
+    if (!rest.length) return m;
+    const ne = endsAfter(m);
+    let v = pips(m.t) * 0.9 + (m.t[0] === m.t[1] ? 3 : 0);
+    for (const n of new Set(ne)) {
+      if (G.lacks.has(n)) v += 7;
+      // The more tiles of n the CPU can account for, the less likely the human has one.
+      v += seen[n] * 0.9;
+    }
+    if (ne[0] === ne[1]) v += G.lacks.has(ne[0]) ? 6 : 1;
+    // Keep tiles that can follow up on the new ends, and keep variety in hand.
+    v += rest.filter(t => ne.includes(t[0]) || ne.includes(t[1])).length * 1.6;
+    v += new Set(rest.flat()).size * 0.6;
+    // Near the end, avoid leaving ends the CPU itself can't follow.
+    if (rest.length <= 2 && !rest.some(t => ne.includes(t[0]) || ne.includes(t[1]))) v -= 4;
+    if (!best || v > best.v) best = { ...m, v };
+  }
+  return best;
+}
+
+// ---------- human ----------
+function clickTile(i) {
+  if (busy || G.over || G.turn !== 0) return;
+  const s = sidesFor(G.hands[0][i]);
+  if (!s.length) { say('Essa pedra não encaixa em nenhuma ponta.'); return; }
+  if (s.length === 1 || ends()[0] === ends()[1]) { playHuman(i, s[0]); return; }
+  selected = selected === i ? -1 : i;
+  say(selected < 0 ? 'Escolha uma pedra.' : 'Encaixa nos dois lados. Escolha a <b>ponta</b> na mesa.');
+  render();
+}
+function playHuman(i, side) {
+  selected = -1;
+  const t = place(0, i, side);
+  G.lacks.delete(t[0]); G.lacks.delete(t[1]);
+  say(`Você jogou <b>${t[0]}|${t[1]}</b>.`);
+  afterMove(0);
+}
+$('#btnBuy').onclick = () => {
+  if (busy || G.over || G.turn !== 0 || playable(0) || !G.yard.length) return;
+  ends().forEach(v => G.lacks.add(v));
+  G.hands[0].push(G.yard.pop()); sfx(240, .05);
+  if (playable(0)) say('Comprou uma pedra que encaixa. Jogue!');
+  else say(G.yard.length ? 'Ainda não encaixa. Compre de novo.' : 'O monte acabou. Passe a vez.');
+  render();
+};
+$('#btnPass').onclick = () => {
+  if (busy || G.over || G.turn !== 0 || playable(0) || G.yard.length) return;
+  say('Você passou.'); pass(0);
+};
+const toMenu = () => { $('#roundEnd').hidden = true; renderMenu(); $('#menu').hidden = false; };
+$('#btnMenu').onclick = toMenu; $('#btnMenu2').onclick = toMenu;
+
+// ---------- render ----------
+function say(h) { $('#msg').innerHTML = h; }
+function render(reveal) {
+  $('#sYou').textContent = G.scores[0]; $('#sCpu').textContent = G.scores[1];
+  const cpu = $('#cpuHand');
+  cpu.innerHTML = G.hands[1].map(t => `<span class="tile">${reveal ? tileSVG(t[0], t[1], true, 22) : backSVG()}</span>`).join('');
+  $('#cpuCount').textContent = `${G.hands[1].length} pedra${G.hands[1].length === 1 ? '' : 's'}`;
+  $('#yard').textContent = `Monte: ${G.yard.length}`;
+
+  const b = $('#board'); b.innerHTML = '';
+  const myTurn = G.turn === 0 && !busy && !G.over;
+  const sel = selected >= 0 ? sidesFor(G.hands[0][selected]) : [];
+  const endBtn = side => { const e = document.createElement('button'); e.type = 'button'; e.className = 'end'; e.textContent = side === 'L' ? '◀ aqui' : 'aqui ▶'; e.onclick = () => playHuman(selected, side); return e; };
+  if (myTurn && sel.includes('L')) b.appendChild(endBtn('L'));
+  G.chain.forEach(c => { const s = document.createElement('span'); s.className = 'tile'; s.innerHTML = tileSVG(c.a, c.b, c.a === c.b, 26); b.appendChild(s); });
+  if (myTurn && sel.includes('R')) b.appendChild(endBtn('R'));
+  if (!G.chain.length) b.innerHTML = '<span class="foot">A mesa está vazia.</span>';
+
+  const mine = $('#myHand'); mine.innerHTML = '';
+  G.hands[0].forEach((t, i) => {
+    const ok = myTurn && sidesFor(t).length > 0;
+    const el = document.createElement('button'); el.type = 'button';
+    el.className = 'tile ' + (myTurn ? (ok ? 'ok' : 'no') : '') + (i === selected ? ' sel' : '');
+    el.innerHTML = tileSVG(t[0], t[1], true, 32);
+    el.onclick = () => clickTile(i);
+    mine.appendChild(el);
+  });
+  const can = myTurn && playable(0);
+  $('#btnBuy').disabled = !myTurn || can || !G.yard.length;
+  $('#btnPass').disabled = !myTurn || can || G.yard.length > 0;
+}
+function renderMenu() {
+  $('#diffs').innerHTML = '';
+  for (const [k, d] of Object.entries(DIFFS)) {
+    const el = document.createElement('button'); el.type = 'button'; el.className = 'diff';
+    const w = save.wins[k] || 0, l = save.losses[k] || 0;
+    el.innerHTML = `<span class="n">${d.name}</span><span class="d">${d.desc}</span><span class="w">${w + l ? `${w} vitória${w === 1 ? '' : 's'} · ${l} derrota${l === 1 ? '' : 's'}` : 'Ainda não jogado'}</span>`;
+    el.onclick = () => { audio(); newMatch(k); };
+    $('#diffs').appendChild(el);
+  }
+}
+
+// ---------- audio ----------
+let AC = null;
+function audio() { if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } }
+function sfx(f, d) {
+  if (!AC) return;
+  const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime;
+  o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(.07, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+  o.connect(g).connect(AC.destination); o.start(t); o.stop(t + d);
+}
+addEventListener('pointerdown', audio, { once: true });
+
+// Empty table behind the menu on first load.
+G = { scores: [0, 0], hands: [[], []], yard: [], chain: [], turn: 1, over: true, lacks: new Set() };
+render(); renderMenu();
+})();
+</script>
+</body>
+</html>
